@@ -1,0 +1,31 @@
+{
+  "scenarios": [
+    {
+      "id": "peak_arrival",
+      "name": "Peak arrival at Metro",
+      "type": "demand_surge",
+      "hub_id": "HUB-METRO",
+      "surge_factor": 2.0
+    },
+    {
+      "id": "hub_full",
+      "name": "Hub reaches full capacity",
+      "type": "hub_full",
+      "hub_id": "HUB-KTX"
+    },
+    {
+      "id": "charging_surge",
+      "name": "Charging demand surge",
+      "type": "demand_surge",
+      "hub_id": "HUB-METRO",
+      "surge_factor": 3.0
+    },
+    {
+      "id": "charger_failure",
+      "name": "Charging point failure",
+      "type": "charging_fault",
+      "hub_id": "HUB-METRO",
+      "failed_points": 2
+    }
+  ]
+}

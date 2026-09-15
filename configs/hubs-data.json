@@ -1,0 +1,29 @@
+{
+  "hubs": [
+    {
+      "id": "HUB-METRO",
+      "name": "Ga Metro ĐHQG",
+      "location": { "lat": 10.8790, "lng": 106.8060 },
+      "capacity": 50,
+      "parking_slots": 50,
+      "charging_points": 10,
+      "vehicles": ["V-001", "V-002", "V-003"]
+    },
+    {
+      "id": "HUB-KTX",
+      "name": "Ký túc xá Khu A",
+      "location": { "lat": 10.8800, "lng": 106.8050 },
+      "capacity": 80,
+      "parking_slots": 80,
+      "charging_points": 20,
+      "vehicles": ["V-004", "V-005"]
+    }
+  ],
+  "vehicles": [
+    { "id": "V-001", "type": "e-bike", "battery": 85, "status": "available", "hub_id": "HUB-METRO" },
+    { "id": "V-002", "type": "e-motorcycle", "battery": 40, "status": "in_use", "hub_id": "HUB-METRO" },
+    { "id": "V-003", "type": "e-bike", "battery": 60, "status": "available", "hub_id": "HUB-METRO" },
+    { "id": "V-004", "type": "e-bike", "battery": 30, "status": "charging", "hub_id": "HUB-KTX" },
+    { "id": "V-005", "type": "e-motorcycle", "battery": 90, "status": "available", "hub_id": "HUB-KTX" }
+  ]
+}
