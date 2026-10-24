@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Đặt xe / chỗ đỗ</title>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+</head>
+<body data-role="student">
+  <!-- OWNER: Member 1   USE CASES: U2, U3, U4, U5, U6
+       TODO: Form đặt xe (U2) và đặt chỗ đỗ (U3), hủy (U4), quét QR nhận xe (U5), trả xe (U6), báo sự cố (U7).
+       Rules: keep <nav id="nav"> and the 3 shared scripts; call Hub.init() first; show API results with
+       Hub.render(el, promise, draw). Put page-specific CSS/JS in this file only. -->
+  <nav id="nav"></nav>
+  <main>
+    <h1>Đặt xe / chỗ đỗ</h1>
+    <p class="muted">Phụ trách: Member 1 · Use case: U2, U3, U4, U5, U6</p>
+    <div id="app" class="card"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    // TODO(Member 1): replace this placeholder with the real UI for U2, U3, U4, U5, U6.
+    Hub.render(document.getElementById('app'), API.get('/api/reservation/my-trips'), data => {
+      document.getElementById('app').innerHTML = '<pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
+    });
+  </script>
+</body>
+</html>

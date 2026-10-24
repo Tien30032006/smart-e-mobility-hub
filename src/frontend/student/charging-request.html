@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Đăng ký sạc xe</title>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+</head>
+<body data-role="student">
+  <!-- OWNER: Member 2   USE CASES: UC-CH-01..06
+       TODO: Gửi yêu cầu sạc, đặt lịch sạc (chọn cổng), xem gợi ý thông minh, hủy, theo dõi tiến độ (vị trí hàng đợi, ETA).
+       Rules: keep <nav id="nav"> and the 3 shared scripts; call Hub.init() first; show API results with
+       Hub.render(el, promise, draw). Put page-specific CSS/JS in this file only. -->
+  <nav id="nav"></nav>
+  <main>
+    <h1>Đăng ký sạc xe</h1>
+    <p class="muted">Phụ trách: Member 2 · Use case: UC-CH-01..06</p>
+    <div id="app" class="card"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    // TODO(Member 2): replace this placeholder with the real UI for UC-CH-01..06.
+    Hub.render(document.getElementById('app'), API.get('/api/charging/my-status'), data => {
+      document.getElementById('app').innerHTML = '<pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
+    });
+  </script>
+</body>
+</html>

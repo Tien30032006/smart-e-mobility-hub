@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart E-Mobility Hub</title>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+</head>
+<body data-role="any">
+  <!-- SHARED PAGE: login + live hub overview (proves frontend <-> backend wiring works). -->
+  <nav id="nav"></nav>
+  <main>
+    <h1>Smart E-Mobility Hub</h1>
+    <p class="muted">Hệ thống điều phối phương tiện điện – Khu đô thị ĐHQG-HCM (MVP, dữ liệu giả lập)</p>
+
+    <div class="card" id="login">
+      <b>Đăng nhập demo</b>
+      <p class="muted">Chọn tài khoản có sẵn trong <code>configs/hubs-data.json</code>.</p>
+      <button data-email="an@hcmut.edu.vn" data-go="student/find-hub.html">Sinh viên (xe dùng chung)</button>
+      <button data-email="binh@hcmut.edu.vn" data-go="student/find-hub.html">Sinh viên (có xe điện cá nhân)</button>
+      <button class="secondary" data-email="operator@hub.vn" data-go="operator/dashboard.html">Operator</button>
+    </div>
+
+    <h2>Tổng quan các Hub</h2>
+    <div id="app" class="grid"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    document.querySelectorAll('#login button').forEach(b => b.onclick = async () => {
+      await API.login(b.dataset.email); location.href = '/app/' + b.dataset.go;
+    });
+    Hub.render(document.getElementById('app'), API.get('/api/hubs'), hubs => {
+      document.getElementById('app').innerHTML = hubs.map(h => `
+        <div class="card"><b>${Hub.esc(h.name)}</b> <span class="badge ${h.near_capacity ? 'bad' : ''}">${Math.round(h.utilization*100)}% đầy</span>
+          <div class="bar ${h.near_capacity ? 'hot' : ''}"><i style="width:${h.utilization*100}%"></i></div>
+          <p class="muted">Chỗ trống ${h.free_spaces}/${h.capacity} · Xe sẵn sàng ${h.vehicles_available} · Cổng sạc trống ${h.charging_points_free}/${h.charging_points_total}</p></div>`).join('');
+    });
+  </script>
+</body>
+</html>
