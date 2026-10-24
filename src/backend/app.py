@@ -8,7 +8,7 @@ Unfinished endpoints answer HTTP 501 with the owner + use case (see core/todo.py
 """
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -78,6 +78,14 @@ def create_app() -> FastAPI:
     app.include_router(charging_router)
     app.include_router(operations_router)
     app.include_router(simulation_router)
+
+    @app.middleware("http")
+    async def no_cache_for_frontend(request: Request, call_next):
+        """Dev convenience: browsers (incl. VS Code's built-in one) must never reuse stale HTML/CSS/JS."""
+        response = await call_next(request)
+        if request.url.path.startswith(("/app", "/shared")):
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+        return response
 
     app.mount("/shared", StaticFiles(directory=SRC_DIR / "shared"), name="shared")
     app.mount("/app", StaticFiles(directory=SRC_DIR / "frontend", html=True), name="frontend")

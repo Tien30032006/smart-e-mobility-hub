@@ -2,18 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Network Dashboard</title>
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="page.dashboard.title">Network Dashboard</title>
+  <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
 </head>
 <body data-role="operator">
   <!-- OWNER: Member 3   USE CASES: UC01, UC02, UC03, UC-OP04
        TODO: Network-wide KPIs, Hub table (utilization), map markers, alerts, redistribution proposals + relocation order creation.
-       Rules: keep <nav id="nav"> and the 3 shared scripts; call Hub.init() first; show API results with
-       Hub.render(el, promise, draw). Put page-specific CSS/JS in this file only. -->
+       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
+       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
+       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
+       Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
-    <h1>Network Dashboard</h1>
-    <p class="muted">Owner: Member 3 · Use cases: UC01, UC02, UC03, UC-OP04</p>
+    <header class="page-head">
+      <h1 data-i18n="page.dashboard.title">Network Dashboard</h1>
+      <p class="muted" data-i18n="page.dashboard.desc"></p>
+      <div class="chips">
+        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 3</span></span>
+        <span class="chip"><span><span data-i18n="common.useCases"></span>: UC01, UC02, UC03, UC-OP04</span></span>
+      </div>
+    </header>
     <div id="app" class="card"></div>
   </main>
   <script src="/shared/api-client.js"></script>
@@ -22,7 +32,7 @@
     Hub.init();
     // TODO(Member 3): replace this placeholder with the real UI for UC01, UC02, UC03, UC-OP04.
     Hub.render(document.getElementById('app'), API.get('/api/operator/dashboard'), data => {
-      document.getElementById('app').innerHTML = '<pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
+      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
     });
   </script>
 </body>
