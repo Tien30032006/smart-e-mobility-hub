@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tìm Hub & phương tiện</title>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+</head>
+<body data-role="student">
+  <!-- OWNER: Member 1   USE CASES: U1
+       TODO: Bản đồ/danh sách Hub, xe còn trống, % pin, chỗ đỗ trống. Bộ lọc: loại xe, pin tối thiểu, Hub đi/đến.
+       Rules: keep <nav id="nav"> and the 3 shared scripts; call Hub.init() first; show API results with
+       Hub.render(el, promise, draw). Put page-specific CSS/JS in this file only. -->
+  <nav id="nav"></nav>
+  <main>
+    <h1>Tìm Hub & phương tiện</h1>
+    <p class="muted">Phụ trách: Member 1 · Use case: U1</p>
+    <div id="app" class="card"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    // TODO(Member 1): replace this placeholder with the real UI for U1.
+    Hub.render(document.getElementById('app'), API.get('/api/reservation/search'), data => {
+      document.getElementById('app').innerHTML = '<pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
+    });
+  </script>
+</body>
+</html>
