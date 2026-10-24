@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
-pydantic
+pydantic>=2
 python-dotenv
 pytest
 httpx
-rich
+# Member 4: add openpyxl or reportlab here when you pick the report format (UC7)

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="page.incidents.title">Incident Handling</title>
+  <script src="/shared/i18n.js"></script>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+</head>
+<body data-role="operator">
+  <!-- OWNER: Member 3   USE CASES: UC05, UC-OP06, UC-OP07
+       TODO: Incident list, Handle button (put the device into maintenance, create a ticket, cancel affected reservations).
+       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
+       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
+       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
+       Put page-specific CSS/JS in this file only. -->
+  <nav id="nav"></nav>
+  <main>
+    <header class="page-head">
+      <h1 data-i18n="page.incidents.title">Incident Handling</h1>
+      <p class="muted" data-i18n="page.incidents.desc"></p>
+      <div class="chips">
+        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 3</span></span>
+        <span class="chip"><span><span data-i18n="common.useCases"></span>: UC05, UC-OP06, UC-OP07</span></span>
+      </div>
+    </header>
+    <div id="app" class="card"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    // TODO(Member 3): replace this placeholder with the real UI for UC05, UC-OP06, UC-OP07.
+    Hub.render(document.getElementById('app'), API.get('/api/operator/incidents'), data => {
+      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
+    });
+  </script>
+</body>
+</html>
