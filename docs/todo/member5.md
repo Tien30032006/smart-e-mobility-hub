@@ -21,7 +21,7 @@ Member 5 has no dedicated use-case module; this role owns the **shared** parts s
 - [ ] Concurrency checks: many requests reserving the same resource (combine the tests of Members 1 and 2)
 
 ### P2
-- [ ] Shared UI: menu, error / "not implemented yet" states, a consistent style across pages
+- [ ] Shared UI: keep `shared/i18n.js` complete (EN + VI keys for every page), review members' pages against `docs/ui-guidelines.md` (contrast, 44px targets, dark mode, no hard-coded text)
 - [ ] A script to quickly reset demo data before each rehearsal (`scripts/seed_data.py`)
 - [ ] Cleanup: remove leftover `todo(...)` calls, outdated docstrings and unused files
 

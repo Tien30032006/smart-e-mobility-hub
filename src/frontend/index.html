@@ -2,39 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Smart E-Mobility Hub</title>
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="app.name">Smart E-Mobility Hub</title>
+  <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
 </head>
 <body data-role="any">
   <!-- SHARED PAGE: login + live hub overview (proves frontend <-> backend wiring works). -->
   <nav id="nav"></nav>
   <main>
-    <h1>Smart E-Mobility Hub</h1>
-    <p class="muted">Electric mobility coordination system for the VNU-HCM Urban Area (MVP, simulated data)</p>
+    <section class="hero">
+      <h1><span data-i18n="app.name">Smart E-Mobility Hub</span></h1>
+      <p class="muted" data-i18n="app.tagline"></p>
+      <p class="muted"><small data-i18n="app.mvp"></small></p>
 
-    <div class="card" id="login">
-      <b>Demo login</b>
-      <p class="muted">Pick one of the accounts defined in <code>configs/hubs-data.json</code>.</p>
-      <button data-email="an@hcmut.edu.vn" data-go="student/find-hub.html">Student (shared vehicles)</button>
-      <button data-email="binh@hcmut.edu.vn" data-go="student/find-hub.html">Student (owns a private EV)</button>
-      <button class="secondary" data-email="operator@hub.vn" data-go="operator/dashboard.html">Operator</button>
-    </div>
+      <h2 data-i18n="home.loginTitle" style="margin-top:24px"></h2>
+      <p class="muted" data-i18n="home.loginDesc"></p>
+      <div class="roles" id="login">
+        <button type="button" class="role-card" data-email="an@hcmut.edu.vn" data-go="student/find-hub.html">
+          <span class="ico" data-icon="bike"></span>
+          <strong data-i18n="home.studentShared"></strong><span class="d" data-i18n="home.studentSharedDesc"></span>
+        </button>
+        <button type="button" class="role-card" data-email="binh@hcmut.edu.vn" data-go="student/find-hub.html">
+          <span class="ico" data-icon="plug"></span>
+          <strong data-i18n="home.studentEv"></strong><span class="d" data-i18n="home.studentEvDesc"></span>
+        </button>
+        <button type="button" class="role-card" data-email="operator@hub.vn" data-go="operator/dashboard.html">
+          <span class="ico" data-icon="shield"></span>
+          <strong data-i18n="home.operator"></strong><span class="d" data-i18n="home.operatorDesc"></span>
+        </button>
+      </div>
+      <div id="login-msg" class="error" role="alert" style="margin-top:14px"></div>
+    </section>
 
-    <h2>Hub Overview</h2>
+    <h2 data-i18n="home.overview"></h2>
+    <p class="muted" data-i18n="home.overviewDesc"></p>
     <div id="app" class="grid"></div>
   </main>
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
     Hub.init();
+    const paintIcons = () => document.querySelectorAll('[data-icon]').forEach(e => e.innerHTML = Hub.icon(e.dataset.icon));
+    paintIcons();
+
     document.querySelectorAll('#login button').forEach(b => b.onclick = async () => {
-      await API.login(b.dataset.email); location.href = '/app/' + b.dataset.go;
+      const msg = document.getElementById('login-msg');
+      msg.textContent = ''; b.disabled = true;
+      try { await API.login(b.dataset.email); location.href = '/app/' + b.dataset.go; }
+      catch (e) { msg.textContent = Hub.t('home.loginFailed'); b.disabled = false; }
     });
+
     Hub.render(document.getElementById('app'), API.get('/api/hubs'), hubs => {
-      document.getElementById('app').innerHTML = hubs.map(h => `
-        <div class="card"><b>${Hub.esc(h.name)}</b> <span class="badge ${h.near_capacity ? 'bad' : ''}">${Math.round(h.utilization*100)}% full</span>
-          <div class="bar ${h.near_capacity ? 'hot' : ''}"><i style="width:${h.utilization*100}%"></i></div>
-          <p class="muted">Free spaces ${h.free_spaces}/${h.capacity} · Vehicles available ${h.vehicles_available} · Free charging points ${h.charging_points_free}/${h.charging_points_total}</p></div>`).join('');
+      document.getElementById('app').innerHTML = hubs.map(h => {
+        const pct = Math.round(h.utilization * 100);
+        return `
+        <article class="card lift">
+          <div class="hub-head"><b>${Hub.esc(I18n.hubName(h))}</b>
+            <span class="badge ${h.near_capacity ? 'bad' : ''}">${h.near_capacity ? Hub.esc(Hub.t('hub.nearFull')) + ' · ' : ''}${pct}${Hub.esc(Hub.t('hub.full'))}</span></div>
+          <div class="bar ${h.near_capacity ? 'hot' : ''}" role="progressbar" aria-label="${Hub.esc(Hub.t('hub.utilization'))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+          <ul class="stats">
+            <li>${Hub.icon('parking', 'ico')} ${Hub.esc(Hub.t('hub.spaces'))} <strong>${h.free_spaces}/${h.capacity}</strong></li>
+            <li>${Hub.icon('bike', 'ico')} ${Hub.esc(Hub.t('hub.vehicles'))} <strong>${h.vehicles_available}</strong></li>
+            <li>${Hub.icon('plug', 'ico')} ${Hub.esc(Hub.t('hub.chargers'))} <strong>${h.charging_points_free}/${h.charging_points_total}</strong></li>
+          </ul>
+        </article>`;
+      }).join('');
     });
   </script>
 </body>

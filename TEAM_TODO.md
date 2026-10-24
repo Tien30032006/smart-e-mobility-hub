@@ -25,7 +25,7 @@ Read this file first, then open **your personal TODO file** in `docs/todo/`.
 | `AllocationService` | `core/allocation_service.py` | Delegation only: `allocate_vehicle/parking` → Member 1, `schedule_charging` → Member 2 |
 | Demo data | `configs/hubs-data.json`, `data/seed_data.py` | 4 Hubs, 10 vehicles (1 private), 3 accounts |
 | App + shared API | `app.py` | `/api/auth/login`, `/api/hubs`, `/api/network/status`; Swagger at `/docs` |
-| Shared frontend | `index.html`, `assets/`, `shared/api-client.js` | Login, menu, and the 501 "not implemented – owner" display |
+| Shared frontend | `index.html`, `assets/`, `shared/api-client.js`, `shared/i18n.js` | Login, menu, EN/VI switcher, dark mode, design system, and the 501 "not implemented – owner" display |
 | Tests for shared parts | `tests/test_core.py` | Must always stay green |
 
 Detailed contract (function names, event payloads, relocation-plan format…): [docs/shared-contract.md](docs/shared-contract.md).
@@ -53,6 +53,7 @@ The member specs overlap in several places. These conventions avoid duplicated w
 3. Delete the `todo(...)` call once a function is done and **remove the `@SKIP`** on the matching test. Never merge while `pytest` is red.
 4. Every "check availability → reserve" operation must happen inside `with network.lock:`.
 5. Everyone must understand and be able to explain their own code during the demo.
+6. **UI is bilingual (EN/VI):** no hard-coded visible text; add keys to both languages in `src/shared/i18n.js` and follow [`docs/ui-guidelines.md`](docs/ui-guidelines.md).
 
 ## 4. Suggested roadmap (adjust to the deadlines on the LMS)
 

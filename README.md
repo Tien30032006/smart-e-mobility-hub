@@ -37,6 +37,7 @@ The core software-engineering focus:
 - 🔋 **Smart charging scheduling** that prioritizes vehicles by battery level and expected usage.
 - 📊 **Operational monitoring & incident handling** (overload detection, vehicle redistribution, device failures).
 - 🔮 **What-if Simulation** that evaluates hypothetical scenarios on a read-only snapshot, without touching live data.
+- 🌐 **Bilingual, accessible UI** (English / Vietnamese, light / dark mode, responsive, WCAG-minded) built with plain HTML/CSS/JS.
 
 > This project intentionally does **not** focus on IoT hardware or 3D map
 > interfaces. Data is simulated and kept in memory; no real database is required.
@@ -152,10 +153,12 @@ smart-e-mobility-hub/
 │   │   └── assets/               # css / js / img
 │   │
 │   └── shared/
-│       └── api-client.js         # Shared frontend ↔ backend client
+│       ├── api-client.js         # Shared frontend ↔ backend client
+│       └── i18n.js               # EN/VI dictionaries, language + theme switcher
 │
 ├── docs/
 │   ├── shared-contract.md        # Inter-module contract
+│   ├── ui-guidelines.md          # Bilingual UI, design system & UX checklist
 │   └── todo/member{1..5}.md      # Personal task lists
 │
 └── scripts/
@@ -163,6 +166,16 @@ smart-e-mobility-hub/
     ├── run_frontend.sh
     └── seed_data.py
 ```
+
+---
+
+## 🎨 UI / UX & Languages
+
+- **Two languages:** switch **EN | VI** in the top bar. The choice is remembered; first visit follows your browser language.
+- **Light & dark mode** (follows your OS by default, toggle in the top bar).
+- Responsive from phone to desktop, keyboard-friendly (skip link, visible focus), 44 px touch targets, reduced-motion support.
+- Everything is driven by shared design tokens in `assets/css/style.css` and the dictionaries in `src/shared/i18n.js`.
+  Contributors: read [`docs/ui-guidelines.md`](docs/ui-guidelines.md) before building a page.
 
 ---
 
@@ -236,7 +249,7 @@ Full, interactive reference: **`/docs`** while the server is running.
 - Every entity from the class diagram, status enums, `HubNetworkManager` (thread-safe state, atomic `move_vehicle`, isolated `snapshot()`), event bus, mock authentication with role checks.
 - Demo network: 4 Hubs, 10 vehicles (including one private EV), 3 accounts.
 - All four module routers are wired into the app, so each member only replaces `todo(...)` stubs with real logic.
-- Frontend: login, role-based menu, live Hub overview, and 8 stub pages that show a clear "not implemented yet - owner" message.
+- Frontend: login, role-based menu, live Hub overview, EN/VI language switcher, dark mode, and 8 stub pages that show a clear "not implemented yet - owner" message.
 
 ---
 

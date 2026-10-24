@@ -79,3 +79,9 @@ Shared vehicle: `EVehicle.owner_id is None`. Private vehicle: `owner_id` = the s
 ## 8. Demo data (`configs/hubs-data.json`)
 
 Hubs are deliberately small (Metro 12 spaces, Library 8 spaces…) so that full / overloaded situations are easy to create during the demo. To add data, edit this JSON file, not the module code.
+
+## 9. Frontend conventions (bilingual UI + design system)
+
+* The UI is bilingual (EN / VI). All visible text goes through `src/shared/i18n.js` (`data-i18n` / `Hub.t`); add new keys to both languages.
+* Use the CSS tokens and components in `assets/css/style.css`; no raw colors, no emoji icons; support light + dark mode.
+* Details and checklist: [`docs/ui-guidelines.md`](ui-guidelines.md).
