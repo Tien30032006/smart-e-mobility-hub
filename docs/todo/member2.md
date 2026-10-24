@@ -1,87 +1,87 @@
-# TODO cá nhân – Member 2 (Charging & Scheduling Lead)
+# Personal TODO – Member 2 (Charging & Scheduling Lead)
 
-* Tài liệu spec của bạn: **Charging__Scheduling.docx**
-* Thư mục code: `src/backend/modules/charging/`
-* Trang giao diện: `student/charging-request.html` và (cùng Member 3) `operator/charging.html`
-* Test của bạn: `src/backend/tests/test_charging.py` (bỏ `@SKIP` khi làm xong từng UC)
-* Đọc trước: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
+* Your spec document: **Charging__Scheduling.docx**
+* Code folder: `src/backend/modules/charging/`
+* UI pages: `student/charging-request.html` and (shared with Member 3) `operator/charging.html`
+* Your tests: `src/backend/tests/test_charging.py` (remove `@SKIP` as each use case is finished)
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
 
-Mỗi chỗ cần làm trong code đã có hàm stub gọi `todo(...)` kèm docstring hướng dẫn – tìm bằng `grep -rn "todo(" src/backend/modules/charging/`. Gọi endpoint chưa làm sẽ nhận HTTP 501 ghi tên bạn.
+Every place that needs work already has a stub function that calls `todo(...)` with a docstring of guidance – find them with `grep -rn "todo(" src/backend/modules/charging/`. Calling an unfinished endpoint returns HTTP 501 with your name.
 
-## A. Code (làm theo thứ tự P0 → P1 → P2)
+## A. Code (work in order P0 → P1 → P2)
 
-### P0 – làm trước, người khác đang phụ thuộc / nền tảng
+### P0 – do first; others depend on it / foundation
 
-- [ ] **UC-CH-09 thuật toán ưu tiên** — `scheduler.calculate_priority` (hàm thuần), `run_prioritization`, `get_queue`
-  - Công thức gợi ý trong docstring; xe pin thấp / sắp dùng được sạc trước; không bao giờ gán cổng hỏng/đã đặt. **Member 3 và Member 4 phụ thuộc** – làm đầu tiên.
-- [ ] **UC-CH-01 gửi yêu cầu sạc** — `service.submit_charging_request`
-  - Chỉ xe điện cá nhân; tạo session QUEUED; phát `CHARGING_REQUESTED`.
-- [ ] **UC-CH-10 dữ liệu cảm biến** — `telemetry.ingest_readings`, `start_simulator`
-  - Dữ liệu pin/cổng sạc cập nhật gần thời gian thực → làm demo "sống" cho cả nhóm.
+- [ ] **UC-CH-09 priority algorithm** — `scheduler.calculate_priority` (pure function), `run_prioritization`, `get_queue`
+  - Suggested formula is in the docstring; low-battery / soon-needed vehicles are charged first; never assign a broken or reserved point. **Members 3 and 4 depend on this** – do it first.
+- [ ] **UC-CH-01 submit charging request** — `service.submit_charging_request`
+  - Private EVs only; create a QUEUED session; emit `CHARGING_REQUESTED`.
+- [ ] **UC-CH-10 sensor data** — `telemetry.ingest_readings`, `start_simulator`
+  - Near-real-time battery / charging-point updates → makes the demo feel "live" for the whole team.
 
-### P1 – chức năng chính để demo
+### P1 – main features for the demo
 
-- [ ] **UC-CH-02 + 03 đặt lịch + chọn cổng** — `schedule_charging_session`, `list_available_points`
-  - Chống trùng khung giờ trên cùng cổng (trong `network.lock`); tạo `Reservation(kind=CHARGING)`.
-- [ ] **UC-CH-05 hủy** — `cancel_charging_reservation`
-  - Nhả cổng/khung giờ và đẩy hàng đợi lên.
-- [ ] **UC-CH-07 + 08 giám sát/đổi trạng thái cổng** — `point_monitor.py`
-  - Cổng bị đặt OUT_OF_SERVICE khi đang sạc → đưa session về hàng đợi. Phát `CHARGER_STATUS_CHANGED`.
-- [ ] **UC-CH-06 xem trạng thái sạc** — `get_my_charging_status`
-  - Vị trí hàng đợi, cổng được gán, pin hiện tại, ETA = (100−pin)/công suất.
+- [ ] **UC-CH-02 + 03 schedule + select point** — `schedule_charging_session`, `list_available_points`
+  - Prevent overlapping time slots on the same point (inside `network.lock`); create `Reservation(kind=CHARGING)`.
+- [ ] **UC-CH-05 cancel** — `cancel_charging_reservation`
+  - Release the point/time slot and move the queue forward.
+- [ ] **UC-CH-07 + 08 monitor / change point status** — `point_monitor.py`
+  - A point set to OUT_OF_SERVICE while charging → return the session to the queue. Emit `CHARGER_STATUS_CHANGED`.
+- [ ] **UC-CH-06 view charging status** — `get_my_charging_status`
+  - Queue position, assigned point, current battery, ETA = (100 − battery) / power.
 
-### P2 – hoàn thiện
+### P2 – polish
 
-- [ ] **UC-CH-04 gợi ý thông minh** — `get_smart_suggestion`
-  - Chấm điểm (Hub, cổng, khung giờ) theo pin + giờ cần xe + khả năng trống dự kiến.
-- [ ] **`apply_manual_override`** — hàm Member 3 gọi cho UC-OP09
-  - Làm sau P0 nhưng trước tích hợp; phát `CHARGING_OVERRIDE`.
-- [ ] **Giao diện** — trang sinh viên + phần thao tác cổng sạc trên `operator/charging.html` (làm chung với Member 3)
+- [ ] **UC-CH-04 smart suggestion** — `get_smart_suggestion`
+  - Score (Hub, point, time slot) by battery + the time the vehicle is needed + expected availability.
+- [ ] **`apply_manual_override`** — the function Member 3 calls for UC-OP09
+  - Do it after P0 but before integration; emit `CHARGING_OVERRIDE`.
+- [ ] **UI** — the student page + the charging-point controls on `operator/charging.html` (shared with Member 3)
 
-## B. Tài liệu cá nhân (đề bài: mỗi người làm cho UC của mình)
+## B. Personal documents (course requirement: each member covers their own use cases)
 
 | Use case | Sequence diagram (#2) | Activity diagram (#2) | UC detail (#1) |
 |---|---|---|---|
-| UC-CH-01 Submit Charging Request | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-02 Schedule Charging Session | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-03 Select Charging Point | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-04 Get Smart Charging Suggestion | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-05 Cancel Charging Reservation | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-06 View My Charging Status | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-07 Monitor Charging Point Status | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-08 Update Charging Point Status | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-09 Run Smart Charging Prioritization | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-CH-10 Report Real-time Charging & Battery Data | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
+| UC-CH-01 Submit Charging Request | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-02 Schedule Charging Session | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-03 Select Charging Point | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-04 Get Smart Charging Suggestion | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-05 Cancel Charging Reservation | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-06 View My Charging Status | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-07 Monitor Charging Point Status | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-08 Update Charging Point Status | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-09 Run Smart Charging Prioritization | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-CH-10 Report Real-time Charging & Battery Data | ☐ | ☐ | ☐ (already in the spec file – review it) |
 
-- [ ] **Hạn #3 – Class & method description** cho: `ChargingPoint`, `ChargingSession`, `EVehicle` (getBatteryLevel, updateStatus, assignToHub) (mô tả *mọi* method trong class diagram của lớp mình; nếu code lệch diagram thì báo nhóm để sửa diagram).
-- [ ] (Bonus) State-chart diagram cho đối tượng có vòng đời: xe, cổng sạc, reservation, charging session, incident, simulation.
-- [ ] (Bonus) Test case: dùng danh sách ở mục D làm gốc.
+- [ ] **Deadline #3 – Class & method description** for: `ChargingPoint`, `ChargingSession`, `EVehicle` (getBatteryLevel, updateStatus, assignToHub) (describe *every* method in the class diagram for your classes; if the code deviates from the diagram, tell the team so the diagram gets fixed).
+- [ ] (Bonus) State-chart diagram for objects with a lifecycle: vehicle, charging point, reservation, charging session, incident, simulation.
+- [ ] (Bonus) Test cases: use the list in section D as a starting point.
 
-## C. Phụ thuộc với người khác
+## C. Dependencies on other members
 
-- **Người khác cần bạn:** Member 3 gọi: `run_prioritization`, `get_queue`, `apply_manual_override`, `update_point_status`. Member 4 chỉ đọc snapshot.
-- **Bạn cần người khác:** Member 1: không gọi trực tiếp (chung store `network.reservations`, nên lọc theo `kind`).
-- Đổi chữ ký hàm / payload sự kiện đã ghi trong `docs/shared-contract.md` → nhắn cả nhóm trước.
+- **Others need you:** Member 3 calls `run_prioritization`, `get_queue`, `apply_manual_override`, `update_point_status`. Member 4 only reads the snapshot.
+- **You need others:** Member 1: no direct calls (you share the `network.reservations` store, so filter by `kind`).
+- Changing a function signature / event payload recorded in `docs/shared-contract.md` → message the whole team first.
 
-## D. Test tối thiểu cần có
+## D. Minimum tests required
 
-- [ ] Pin thấp có điểm ưu tiên cao hơn pin cao (cùng thời gian cần xe)
-- [ ] Cổng OUT_OF_SERVICE không bao giờ được gán
-- [ ] Hai đặt lịch trùng khung giờ trên cùng cổng → từ chối
-- [ ] Telemetry với giá trị pin ngoài 0–100 bị từ chối
+- [ ] A low battery gets a higher priority score than a high battery (same time-needed)
+- [ ] An OUT_OF_SERVICE point is never assigned
+- [ ] Two bookings overlapping on the same point → rejected
+- [ ] Telemetry with a battery value outside 0–100 is rejected
 
-## E. Phần chung cả nhóm (bạn cùng làm)
+## E. Shared team work (you contribute too)
 
-- [ ] Use-case diagram toàn hệ thống (#1) · Mô tả bối cảnh/stakeholder/phạm vi (#1) · NFR chung (#1)
-- [ ] UI mockup (#2) – phần màn hình của bạn: `student/charging-request.html` và (cùng Member 3) `operator/charging.html`
+- [ ] System-wide use-case diagram (#1) · Context/stakeholder/scope description (#1) · Shared NFRs (#1)
+- [ ] UI mockups (#2) – your screens: `student/charging-request.html` and (shared with Member 3) `operator/charging.html`
 - [ ] Deployment view + Development view (#3)
-- [ ] Slide demo + luyện demo – phần của bạn: Kịch bản 2 trong TEAM_TODO.md (yêu cầu sạc → chạy lịch ưu tiên → override).
-- [ ] Đánh giá chéo thành viên cuối kỳ
+- [ ] Demo slides + demo rehearsal – your part: Scenario 2 in TEAM_TODO.md (charging request → run priority schedule → override).
+- [ ] End-of-term peer evaluation
 
-## F. Definition of Done cho mỗi use case
+## F. Definition of Done for each use case
 
-- [ ] Hàm trong `service` chạy đúng luồng chính **và** luồng ngoại lệ trong spec
-- [ ] Endpoint trả đúng mã lỗi (400/404/409), không còn 501
-- [ ] Có ≥ 1 test cho luồng chính, 1 cho luồng lỗi; `pytest` xanh
-- [ ] Trang giao diện dùng được (không còn khung TODO màu vàng)
-- [ ] Sequence + activity diagram khớp với code thật
+- [ ] The `service` function handles the main flow **and** the exception flows from the spec
+- [ ] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
+- [ ] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
+- [ ] The UI page is usable (no more yellow TODO box)
+- [ ] Sequence + activity diagrams match the real code
