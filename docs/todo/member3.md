@@ -1,82 +1,82 @@
-# TODO cá nhân – Member 3 (Operator Monitoring & Incident Lead)
+# Personal TODO – Member 3 (Operator Monitoring & Incident Lead)
 
-* Tài liệu spec của bạn: **Operator_Use_Case_Specification.docx**
-* Thư mục code: `src/backend/modules/operations/`
-* Trang giao diện: `operator/dashboard.html`, `operator/incidents.html` và (cùng Member 2) `operator/charging.html`
-* Test của bạn: `src/backend/tests/test_operations.py` (bỏ `@SKIP` khi làm xong từng UC)
-* Đọc trước: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
+* Your spec document: **Operator_Use_Case_Specification.docx**
+* Code folder: `src/backend/modules/operations/`
+* UI pages: `operator/dashboard.html`, `operator/incidents.html` and (shared with Member 2) `operator/charging.html`
+* Your tests: `src/backend/tests/test_operations.py` (remove `@SKIP` as each use case is finished)
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
 
-Mỗi chỗ cần làm trong code đã có hàm stub gọi `todo(...)` kèm docstring hướng dẫn – tìm bằng `grep -rn "todo(" src/backend/modules/operations/`. Gọi endpoint chưa làm sẽ nhận HTTP 501 ghi tên bạn.
+Every place that needs work already has a stub function that calls `todo(...)` with a docstring of guidance – find them with `grep -rn "todo(" src/backend/modules/operations/`. Calling an unfinished endpoint returns HTTP 501 with your name.
 
-## A. Code (làm theo thứ tự P0 → P1 → P2)
+## A. Code (work in order P0 → P1 → P2)
 
-### P0 – làm trước, người khác đang phụ thuộc / nền tảng
+### P0 – do first; others depend on it / foundation
 
 - [ ] **UC01 dashboard** — `service.get_dashboard`, `get_hub_detail`
-  - Bắt đầu từ `network.get_network_status()` (đã có KPI từng Hub); thêm cảnh báo, cổng sạc, marker bản đồ.
-- [ ] **UC02 cảnh báo** — `service.scan_for_alerts`, `list_alerts`, `acknowledge_alert`
-  - Hub gần đầy (`hub.is_near_capacity()`), pin thấp hàng loạt, cổng mất kết nối; khử trùng lặp; phát `ALERT_RAISED`/`HUB_NEAR_CAPACITY`.
-- [ ] **UC03 + UC-OP04 điều phối xe** — `redistribution.py`, `HubNetworkManager.redistribute_vehicles`
-  - `propose_redistribution` → `create_relocation_order` → hoàn tất bằng `network.move_vehicle`. Định nghĩa **format `plan`** (Member 4 dùng lại).
+  - Start from `network.get_network_status()` (it already has per-Hub KPIs); add alerts, charging points, map markers.
+- [ ] **UC02 alerts** — `service.scan_for_alerts`, `list_alerts`, `acknowledge_alert`
+  - Near-full Hub (`hub.is_near_capacity()`), mass low battery, disconnected charging points; de-duplicate; emit `ALERT_RAISED`/`HUB_NEAR_CAPACITY`.
+- [ ] **UC03 + UC-OP04 vehicle redistribution** — `redistribution.py`, `HubNetworkManager.redistribute_vehicles`
+  - `propose_redistribution` → `create_relocation_order` → complete with `network.move_vehicle`. Define the **`plan` format** (Member 4 reuses it).
 
-### P1 – chức năng chính để demo
+### P1 – main features for the demo
 
-- [ ] **UC05 + UC-OP06 xử lý sự cố** — `incident_handler.on_issue_reported`, `handle_incident`, `create_maintenance_ticket`
-  - Nghe `ISSUE_REPORTED` (Member 1 phát); xe → MAINTENANCE, cổng → OUT_OF_SERVICE (gọi hàm của Member 2 nếu đang sạc); tạo ticket.
-- [ ] **UC-OP07 hủy đặt chỗ do sự cố** — `cancel_affected_reservations`
-  - Gọi `reservation.service.cancel_reservation(by_system=True)` của Member 1 + gợi ý xe thay thế.
-- [ ] **UC-OP08 + OP09 giám sát/ghi đè sạc** — `charging_oversight.py`
-  - **Không viết lại thuật toán** – gọi `scheduler` của Member 2; lưu nhật ký ghi đè (ai, lý do, lúc nào).
+- [ ] **UC05 + UC-OP06 incident handling** — `incident_handler.on_issue_reported`, `handle_incident`, `create_maintenance_ticket`
+  - Listen to `ISSUE_REPORTED` (emitted by Member 1); vehicle → MAINTENANCE, charging point → OUT_OF_SERVICE (call Member 2's function if it is charging); create a ticket.
+- [ ] **UC-OP07 cancel reservations affected by an incident** — `cancel_affected_reservations`
+  - Call Member 1's `reservation.service.cancel_reservation(by_system=True)` + suggest a replacement vehicle.
+- [ ] **UC-OP08 + OP09 charging oversight / override** — `charging_oversight.py`
+  - **Do not rewrite the algorithm** – call Member 2's `scheduler`; keep an override log (who, why, when).
 
-### P2 – hoàn thiện
+### P2 – polish
 
-- [ ] **`register_event_handlers`** — đăng ký `bus.subscribe` lúc khởi động (gọi từ `app.py` – báo cả nhóm khi sửa)
-- [ ] **Giao diện** — dashboard (bảng + thanh độ đầy), trang sự cố, phần ưu tiên sạc trên `operator/charging.html`
-- [ ] **Danh sách lệnh điều chuyển** — `list_orders` + trạng thái PENDING/ASSIGNED/DONE
+- [ ] **`register_event_handlers`** — register `bus.subscribe` handlers at startup (called from `app.py` – notify the team when editing it)
+- [ ] **UI** — dashboard (table + utilization bars), incidents page, the charging-priority section of `operator/charging.html`
+- [ ] **Relocation order list** — `list_orders` + PENDING/ASSIGNED/DONE statuses
 
-## B. Tài liệu cá nhân (đề bài: mỗi người làm cho UC của mình)
+## B. Personal documents (course requirement: each member covers their own use cases)
 
 | Use case | Sequence diagram (#2) | Activity diagram (#2) | UC detail (#1) |
 |---|---|---|---|
-| UC01 Monitor Network-wide Status | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC02 Manage System Alerts | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC03 Redistribute Vehicles | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-OP04 Create Relocation Order | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC05 Handle Device Incident | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-OP06 Create Maintenance Ticket | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-OP07 Cancel Reservation | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-OP08 Smart Charging Scheduling and Allocation | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC-OP09 Override Charging Priority | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
+| UC01 Monitor Network-wide Status | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC02 Manage System Alerts | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC03 Redistribute Vehicles | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-OP04 Create Relocation Order | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC05 Handle Device Incident | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-OP06 Create Maintenance Ticket | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-OP07 Cancel Reservation | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-OP08 Smart Charging Scheduling and Allocation | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC-OP09 Override Charging Priority | ☐ | ☐ | ☐ (already in the spec file – review it) |
 
-- [ ] **Hạn #3 – Class & method description** cho: `Operator` (monitorNetwork, handleIncident), `MobilityHub` (getAvailableResources, updateUtilization, isNearCapacity), `HubNetworkManager`, `Event` (mô tả *mọi* method trong class diagram của lớp mình; nếu code lệch diagram thì báo nhóm để sửa diagram).
-- [ ] (Bonus) State-chart diagram cho đối tượng có vòng đời: xe, cổng sạc, reservation, charging session, incident, simulation.
-- [ ] (Bonus) Test case: dùng danh sách ở mục D làm gốc.
+- [ ] **Deadline #3 – Class & method description** for: `Operator` (monitorNetwork, handleIncident), `MobilityHub` (getAvailableResources, updateUtilization, isNearCapacity), `HubNetworkManager`, `Event` (describe *every* method in the class diagram for your classes; if the code deviates from the diagram, tell the team so the diagram gets fixed).
+- [ ] (Bonus) State-chart diagram for objects with a lifecycle: vehicle, charging point, reservation, charging session, incident, simulation.
+- [ ] (Bonus) Test cases: use the list in section D as a starting point.
 
-## C. Phụ thuộc với người khác
+## C. Dependencies on other members
 
-- **Người khác cần bạn:** Member 4: khuyến nghị điều chuyển dùng đúng format `plan`.
-- **Bạn cần người khác:** Member 1: `cancel_reservation`, sự kiện `ISSUE_REPORTED`. Member 2: `run_prioritization`, `get_queue`, `apply_manual_override`, `update_point_status`.
-- Đổi chữ ký hàm / payload sự kiện đã ghi trong `docs/shared-contract.md` → nhắn cả nhóm trước.
+- **Others need you:** Member 4: relocation recommendations must use the exact `plan` format.
+- **You need others:** Member 1: `cancel_reservation`, the `ISSUE_REPORTED` event. Member 2: `run_prioritization`, `get_queue`, `apply_manual_override`, `update_point_status`.
+- Changing a function signature / event payload recorded in `docs/shared-contract.md` → message the whole team first.
 
-## D. Test tối thiểu cần có
+## D. Minimum tests required
 
-- [ ] Dashboard: tổng KPI khớp `network.get_network_status()`
-- [ ] Hub vượt 85% tạo đúng 1 cảnh báo (không trùng)
-- [ ] Điều chuyển không chọn xe đang được đặt/đang chạy/bảo trì
-- [ ] Xử lý sự cố: xe → MAINTENANCE + đặt chỗ liên quan bị hủy
+- [ ] Dashboard: total KPIs match `network.get_network_status()`
+- [ ] A Hub exceeding 85% raises exactly 1 alert (no duplicates)
+- [ ] Redistribution never picks a vehicle that is reserved / in use / under maintenance
+- [ ] Incident handling: vehicle → MAINTENANCE + related reservations cancelled
 
-## E. Phần chung cả nhóm (bạn cùng làm)
+## E. Shared team work (you contribute too)
 
-- [ ] Use-case diagram toàn hệ thống (#1) · Mô tả bối cảnh/stakeholder/phạm vi (#1) · NFR chung (#1)
-- [ ] UI mockup (#2) – phần màn hình của bạn: `operator/dashboard.html`, `operator/incidents.html` và (cùng Member 2) `operator/charging.html`
+- [ ] System-wide use-case diagram (#1) · Context/stakeholder/scope description (#1) · Shared NFRs (#1)
+- [ ] UI mockups (#2) – your screens: `operator/dashboard.html`, `operator/incidents.html` and (shared with Member 2) `operator/charging.html`
 - [ ] Deployment view + Development view (#3)
-- [ ] Slide demo + luyện demo – phần của bạn: Kịch bản 3 và 4 trong TEAM_TODO.md (xử lý sự cố; Hub Metro sắp đầy → áp dụng điều chuyển).
-- [ ] Đánh giá chéo thành viên cuối kỳ
+- [ ] Demo slides + demo rehearsal – your part: Scenarios 3 and 4 in TEAM_TODO.md (incident handling; Metro Hub nearly full → apply redistribution).
+- [ ] End-of-term peer evaluation
 
-## F. Definition of Done cho mỗi use case
+## F. Definition of Done for each use case
 
-- [ ] Hàm trong `service` chạy đúng luồng chính **và** luồng ngoại lệ trong spec
-- [ ] Endpoint trả đúng mã lỗi (400/404/409), không còn 501
-- [ ] Có ≥ 1 test cho luồng chính, 1 cho luồng lỗi; `pytest` xanh
-- [ ] Trang giao diện dùng được (không còn khung TODO màu vàng)
-- [ ] Sequence + activity diagram khớp với code thật
+- [ ] The `service` function handles the main flow **and** the exception flows from the spec
+- [ ] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
+- [ ] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
+- [ ] The UI page is usable (no more yellow TODO box)
+- [ ] Sequence + activity diagrams match the real code

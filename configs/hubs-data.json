@@ -1,12 +1,12 @@
 {
   "hubs": [
-    { "id": "HUB-METRO", "name": "Ga Metro ĐHQG", "location": { "lat": 10.8790, "lng": 106.8060 },
+    { "id": "HUB-METRO", "name": "VNU-HCM Metro Station", "location": { "lat": 10.8790, "lng": 106.8060 },
       "capacity": 12, "charging_points": 4, "charging_power_kw": 3.3 },
-    { "id": "HUB-KTX", "name": "Ký túc xá Khu A", "location": { "lat": 10.8800, "lng": 106.8050 },
+    { "id": "HUB-KTX", "name": "Dormitory Zone A", "location": { "lat": 10.8800, "lng": 106.8050 },
       "capacity": 20, "charging_points": 6, "charging_power_kw": 3.3 },
-    { "id": "HUB-CAMPUS", "name": "Khu trường Đại học", "location": { "lat": 10.8820, "lng": 106.8010 },
+    { "id": "HUB-CAMPUS", "name": "University Campus", "location": { "lat": 10.8820, "lng": 106.8010 },
       "capacity": 16, "charging_points": 4, "charging_power_kw": 7.0 },
-    { "id": "HUB-LIB", "name": "Thư viện trung tâm", "location": { "lat": 10.8770, "lng": 106.8030 },
+    { "id": "HUB-LIB", "name": "Central Library", "location": { "lat": 10.8770, "lng": 106.8030 },
       "capacity": 8, "charging_points": 2, "charging_power_kw": 3.3 }
   ],
   "vehicles": [
@@ -22,8 +22,8 @@
     { "id": "PV-001", "model": "Private e-bike", "type": "e-bike", "battery": 20, "status": "available", "hub_id": "HUB-KTX", "owner_id": "U-S02" }
   ],
   "users": [
-    { "id": "U-S01", "role": "student", "full_name": "Nguyễn Văn An", "email": "an@hcmut.edu.vn", "student_code": "2310001", "has_private_ev": false },
-    { "id": "U-S02", "role": "student", "full_name": "Trần Thị Bình", "email": "binh@hcmut.edu.vn", "student_code": "2310002", "has_private_ev": true },
+    { "id": "U-S01", "role": "student", "full_name": "Nguyen Van An", "email": "an@hcmut.edu.vn", "student_code": "2310001", "has_private_ev": false },
+    { "id": "U-S02", "role": "student", "full_name": "Tran Thi Binh", "email": "binh@hcmut.edu.vn", "student_code": "2310002", "has_private_ev": true },
     { "id": "U-OP1", "role": "operator", "full_name": "Operator Demo", "email": "operator@hub.vn", "operator_id": "OP-001" }
   ]
 }

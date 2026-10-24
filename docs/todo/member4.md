@@ -1,81 +1,81 @@
-# TODO cá nhân – Member 4 (What-if Simulation Lead)
+# Personal TODO – Member 4 (What-if Simulation Lead)
 
-* Tài liệu spec của bạn: **what_if_template.docx**
-* Thư mục code: `src/backend/modules/simulation/`
-* Trang giao diện: `operator/what-if.html`
-* Test của bạn: `src/backend/tests/test_simulation.py` (bỏ `@SKIP` khi làm xong từng UC)
-* Đọc trước: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
+* Your spec document: **what_if_template.docx**
+* Code folder: `src/backend/modules/simulation/`
+* UI pages: `operator/what-if.html`
+* Your tests: `src/backend/tests/test_simulation.py` (remove `@SKIP` as each use case is finished)
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
 
-Mỗi chỗ cần làm trong code đã có hàm stub gọi `todo(...)` kèm docstring hướng dẫn – tìm bằng `grep -rn "todo(" src/backend/modules/simulation/`. Gọi endpoint chưa làm sẽ nhận HTTP 501 ghi tên bạn.
+Every place that needs work already has a stub function that calls `todo(...)` with a docstring of guidance – find them with `grep -rn "todo(" src/backend/modules/simulation/`. Calling an unfinished endpoint returns HTTP 501 with your name.
 
-## A. Code (làm theo thứ tự P0 → P1 → P2)
+## A. Code (work in order P0 → P1 → P2)
 
-### P0 – làm trước, người khác đang phụ thuộc / nền tảng
+### P0 – do first; others depend on it / foundation
 
-- [ ] **UC4 + UC3 chạy mô phỏng** — `engine.fetch_snapshot`, `engine.run`
-  - Chạy trên `network.snapshot()` (deep copy) theo bước thời gian (vd 5 phút), **không bao giờ đụng trạng thái thật**. Có `seed` để demo lặp lại được.
-- [ ] **UC1 cấu hình kịch bản** — `scenarios.create_scenario`, `SimulationScenario.configure`
-  - Validate: Hub tồn tại, hệ số hợp lệ, số cổng hỏng ≤ số cổng của Hub. 5 loại: demand_surge (Metro giờ cao điểm), hub_full, charging surge, charging_fault, vehicle_concentration.
-- [ ] **UC5 đánh giá tác động** — `engine.evaluate_impact`
-  - Mỗi Hub: nhu cầu được đáp ứng/không, độ đầy đỉnh, độ dài hàng đợi sạc, thời điểm đầy; phân loại `impact_level`.
+- [ ] **UC4 + UC3 run a simulation** — `engine.fetch_snapshot`, `engine.run`
+  - Run on `network.snapshot()` (deep copy) in time steps (e.g. 5 minutes), **never touching the live state**. Support a `seed` so demos are repeatable.
+- [ ] **UC1 configure a scenario** — `scenarios.create_scenario`, `SimulationScenario.configure`
+  - Validate: the Hub exists, factors are valid, failed points ≤ the Hub's number of points. 5 types: demand_surge (Metro rush hour), hub_full, charging surge, charging_fault, vehicle_concentration.
+- [ ] **UC5 impact evaluation** — `engine.evaluate_impact`
+  - Per Hub: demand served / unserved, peak utilization, charging queue length, time to full; classify `impact_level`.
 
-### P1 – chức năng chính để demo
+### P1 – main features for the demo
 
-- [ ] **UC6 khuyến nghị** — `recommender.generate`
-  - 3 loại: điều chuyển xe (đúng format `plan` của Member 3), đổi lịch sạc, điều hướng người dùng sang Hub khác.
-- [ ] **UC2 mẫu kịch bản** — `scenarios.list_templates`, `create_from_template`
-  - Đọc `configs/simulation-scenarios.json` (đã có 4 mẫu; thêm `vehicle_concentration`).
-- [ ] **API + giao diện** — `routes.py` đã có khung; trang `operator/what-if.html`
-  - Form tham số, bảng tác động theo Hub, danh sách khuyến nghị.
+- [ ] **UC6 recommendations** — `recommender.generate`
+  - 3 kinds: vehicle relocation (exact `plan` format from Member 3), charging reschedule, redirecting users to another Hub.
+- [ ] **UC2 scenario templates** — `scenarios.list_templates`, `create_from_template`
+  - Read `configs/simulation-scenarios.json` (4 templates already there; add `vehicle_concentration`).
+- [ ] **API + UI** — `routes.py` is already scaffolded; build the `operator/what-if.html` page
+  - Parameter form, per-Hub impact table, recommendation list.
 
-### P2 – hoàn thiện
+### P2 – polish
 
-- [ ] **UC7 xuất báo cáo** — `report.export_report`
-  - Chọn MỘT định dạng trước (xlsx hoặc pdf); thêm thư viện vào `requirements.txt`.
-- [ ] **`compare_with_current`** — so sánh trạng thái cuối với snapshot ban đầu
-- [ ] **Biểu đồ diễn biến theo thời gian** — trên trang What-if
+- [ ] **UC7 export report** — `report.export_report`
+  - Pick ONE format first (xlsx or pdf); add the library to `requirements.txt`.
+- [ ] **`compare_with_current`** — compare the final state with the initial snapshot
+- [ ] **Time-series chart** — on the What-if page
 
-## B. Tài liệu cá nhân (đề bài: mỗi người làm cho UC của mình)
+## B. Personal documents (course requirement: each member covers their own use cases)
 
 | Use case | Sequence diagram (#2) | Activity diagram (#2) | UC detail (#1) |
 |---|---|---|---|
-| UC1 Configure Simulation Scenario | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC2 Load Scenario Template | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC3 Run Scenario Simulation | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC4 Fetch Operational State Snapshot | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC5 Evaluate Service Impact & Overload Risk | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC6 Generate Rebalancing Recommendations | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
-| UC7 Export Simulation Report | ☐ | ☐ | ☐ (đã có trong file spec – rà lại) |
+| UC1 Configure Simulation Scenario | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC2 Load Scenario Template | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC3 Run Scenario Simulation | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC4 Fetch Operational State Snapshot | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC5 Evaluate Service Impact & Overload Risk | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC6 Generate Rebalancing Recommendations | ☐ | ☐ | ☐ (already in the spec file – review it) |
+| UC7 Export Simulation Report | ☐ | ☐ | ☐ (already in the spec file – review it) |
 
-- [ ] **Hạn #3 – Class & method description** cho: `SimulationScenario`, `SimulationResult` (mô tả *mọi* method trong class diagram của lớp mình; nếu code lệch diagram thì báo nhóm để sửa diagram).
-- [ ] (Bonus) State-chart diagram cho đối tượng có vòng đời: xe, cổng sạc, reservation, charging session, incident, simulation.
-- [ ] (Bonus) Test case: dùng danh sách ở mục D làm gốc.
+- [ ] **Deadline #3 – Class & method description** for: `SimulationScenario`, `SimulationResult` (describe *every* method in the class diagram for your classes; if the code deviates from the diagram, tell the team so the diagram gets fixed).
+- [ ] (Bonus) State-chart diagram for objects with a lifecycle: vehicle, charging point, reservation, charging session, incident, simulation.
+- [ ] (Bonus) Test cases: use the list in section D as a starting point.
 
-## C. Phụ thuộc với người khác
+## C. Dependencies on other members
 
-- **Người khác cần bạn:** Không ai gọi code của bạn trực tiếp; Member 3 dùng khuyến nghị của bạn qua giao diện.
-- **Bạn cần người khác:** `network.snapshot()` (core). Format `plan` điều chuyển từ Member 3 (`redistribution.py`). Logic ưu tiên sạc của Member 2 chỉ tham khảo khi mô phỏng hàng đợi (có thể dùng công thức đơn giản riêng, ghi rõ trong báo cáo).
-- Đổi chữ ký hàm / payload sự kiện đã ghi trong `docs/shared-contract.md` → nhắn cả nhóm trước.
+- **Others need you:** Nobody calls your code directly; Member 3 consumes your recommendations through the UI.
+- **You need others:** `network.snapshot()` (core). The relocation `plan` format from Member 3 (`redistribution.py`). Member 2's charging-priority logic is only a reference when simulating queues (you may use your own simplified formula, documented in the report).
+- Changing a function signature / event payload recorded in `docs/shared-contract.md` → message the whole team first.
 
-## D. Test tối thiểu cần có
+## D. Minimum tests required
 
-- [ ] **Chạy mô phỏng xong, trạng thái thật không đổi** (so sánh trước/sau)
-- [ ] Tham số không hợp lệ bị từ chối
-- [ ] Cùng seed → cùng kết quả
-- [ ] Surge tại Metro gây cảnh báo nguy cơ quá tải; khuyến nghị đúng format `plan`
+- [ ] **After a simulation finishes, the live state is unchanged** (compare before/after)
+- [ ] Invalid parameters are rejected
+- [ ] Same seed → same result
+- [ ] A surge at Metro raises an overload-risk alert; recommendations use the exact `plan` format
 
-## E. Phần chung cả nhóm (bạn cùng làm)
+## E. Shared team work (you contribute too)
 
-- [ ] Use-case diagram toàn hệ thống (#1) · Mô tả bối cảnh/stakeholder/phạm vi (#1) · NFR chung (#1)
-- [ ] UI mockup (#2) – phần màn hình của bạn: `operator/what-if.html`
+- [ ] System-wide use-case diagram (#1) · Context/stakeholder/scope description (#1) · Shared NFRs (#1)
+- [ ] UI mockups (#2) – your screens: `operator/what-if.html`
 - [ ] Deployment view + Development view (#3)
-- [ ] Slide demo + luyện demo – phần của bạn: Kịch bản 4 trong TEAM_TODO.md (What-if Metro giờ cao điểm → khuyến nghị).
-- [ ] Đánh giá chéo thành viên cuối kỳ
+- [ ] Demo slides + demo rehearsal – your part: Scenario 4 in TEAM_TODO.md (What-if Metro rush hour → recommendation).
+- [ ] End-of-term peer evaluation
 
-## F. Definition of Done cho mỗi use case
+## F. Definition of Done for each use case
 
-- [ ] Hàm trong `service` chạy đúng luồng chính **và** luồng ngoại lệ trong spec
-- [ ] Endpoint trả đúng mã lỗi (400/404/409), không còn 501
-- [ ] Có ≥ 1 test cho luồng chính, 1 cho luồng lỗi; `pytest` xanh
-- [ ] Trang giao diện dùng được (không còn khung TODO màu vàng)
-- [ ] Sequence + activity diagram khớp với code thật
+- [ ] The `service` function handles the main flow **and** the exception flows from the spec
+- [ ] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
+- [ ] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
+- [ ] The UI page is usable (no more yellow TODO box)
+- [ ] Sequence + activity diagrams match the real code

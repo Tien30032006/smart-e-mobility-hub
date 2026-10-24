@@ -6,12 +6,12 @@
 const Hub = (() => {
   const MENU = {
     student: [
-      ['find-hub.html', 'Tìm Hub & xe'], ['reserve-vehicle.html', 'Đặt xe / chỗ đỗ'],
-      ['my-trips.html', 'Chuyến của tôi'], ['charging-request.html', 'Sạc xe'],
+      ['find-hub.html', 'Find Hub & Vehicle'], ['reserve-vehicle.html', 'Reserve Vehicle / Parking'],
+      ['my-trips.html', 'My Trips'], ['charging-request.html', 'Charging'],
     ],
     operator: [
-      ['dashboard.html', 'Dashboard'], ['incidents.html', 'Sự cố'],
-      ['charging.html', 'Trạm sạc'], ['what-if.html', 'What-if'],
+      ['dashboard.html', 'Dashboard'], ['incidents.html', 'Incidents'],
+      ['charging.html', 'Charging Stations'], ['what-if.html', 'What-if'],
     ],
   };
 
@@ -27,7 +27,7 @@ const Hub = (() => {
       const base = s ? '/app/' + s.role + '/' : '/app/';
       nav.innerHTML = '<a class="brand" href="/app/index.html">⚡ Smart E-Mobility Hub</a>' +
         items.map(([f, t]) => `<a href="${base}${f}">${t}</a>`).join('') +
-        (s ? `<span class="who">${esc(s.full_name)} (${s.role}) <a href="#" id="logout">Đăng xuất</a></span>` : '');
+        (s ? `<span class="who">${esc(s.full_name)} (${s.role}) <a href="#" id="logout">Log out</a></span>` : '');
       const lo = document.getElementById('logout');
       if (lo) lo.onclick = (e) => { e.preventDefault(); API.logout(); location.href = '/app/index.html'; };
     }
@@ -36,11 +36,11 @@ const Hub = (() => {
 
   /* Show result of an API promise inside el. Unfinished backend -> yellow TODO box with the owner. */
   async function render(el, promise, draw) {
-    el.innerHTML = '<p class="muted">Đang tải…</p>';
+    el.innerHTML = '<p class="muted">Loading…</p>';
     try { const data = await promise; el.innerHTML = ''; draw(data); }
     catch (err) {
-      if (err.todo) el.innerHTML = `<div class="todo">⏳ Chưa làm: <b>${esc(err.todo.use_case)}</b> — người phụ trách: <b>${esc(err.todo.owner)}</b><br><small>${esc(err.todo.hint || '')}</small></div>`;
-      else el.innerHTML = `<div class="error">Lỗi: ${esc(err.message)}</div>`;
+      if (err.todo) el.innerHTML = `<div class="todo">⏳ Not implemented yet: <b>${esc(err.todo.use_case)}</b> — owner: <b>${esc(err.todo.owner)}</b><br><small>${esc(err.todo.hint || '')}</small></div>`;
+      else el.innerHTML = `<div class="error">Error: ${esc(err.message)}</div>`;
     }
   }
 

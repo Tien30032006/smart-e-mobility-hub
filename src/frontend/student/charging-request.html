@@ -1,19 +1,19 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Đăng ký sạc xe</title>
+  <title>Charging Request</title>
   <link rel="stylesheet" href="/app/assets/css/style.css">
 </head>
 <body data-role="student">
   <!-- OWNER: Member 2   USE CASES: UC-CH-01..06
-       TODO: Gửi yêu cầu sạc, đặt lịch sạc (chọn cổng), xem gợi ý thông minh, hủy, theo dõi tiến độ (vị trí hàng đợi, ETA).
+       TODO: Submit a charging request, schedule a session (select a charging point), view smart suggestions, cancel, track progress (queue position, ETA).
        Rules: keep <nav id="nav"> and the 3 shared scripts; call Hub.init() first; show API results with
        Hub.render(el, promise, draw). Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
-    <h1>Đăng ký sạc xe</h1>
-    <p class="muted">Phụ trách: Member 2 · Use case: UC-CH-01..06</p>
+    <h1>Charging Request</h1>
+    <p class="muted">Owner: Member 2 · Use cases: UC-CH-01..06</p>
     <div id="app" class="card"></div>
   </main>
   <script src="/shared/api-client.js"></script>

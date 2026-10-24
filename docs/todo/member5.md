@@ -1,47 +1,47 @@
-# TODO cá nhân – Member 5 (Architecture, Integration & Report Lead)
+# Personal TODO – Member 5 (Architecture, Integration & Report Lead)
 
-Member 5 không có module use case riêng; giữ phần **chung** để 4 module ghép được với nhau và bài nộp nhất quán.
-(Nếu nhóm chia vai khác, chuyển các mục dưới đây cho người phù hợp.)
+Member 5 has no dedicated use-case module; this role owns the **shared** parts so the 4 modules fit together and the submission stays consistent.
+(If your team splits roles differently, hand the items below to the appropriate people.)
 
-* Thư mục/file phụ trách: `src/backend/core/`, `src/backend/app.py`, `src/backend/data/`, `configs/`, `src/shared/`, `src/frontend/index.html` + `assets/`, `scripts/`, `docs/`
-* Đọc trước: `TEAM_TODO.md`, `docs/shared-contract.md`, class diagram của nhóm
+* Folders/files you own: `src/backend/core/`, `src/backend/app.py`, `src/backend/data/`, `configs/`, `src/shared/`, `src/frontend/index.html` + `assets/`, `scripts/`, `docs/`
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, the team's class diagram
 
-## A. Code & tích hợp
+## A. Code & integration
 
 ### P0
-- [ ] Cả nhóm chạy được `pytest` + `run_backend.sh` ngay tuần đầu; xử lý lỗi môi trường (Python, venv, cổng 8000)
-- [ ] Chốt `docs/shared-contract.md` với 4 thành viên (enum, sự kiện, chữ ký hàm gọi chéo, format `plan` điều chuyển); mọi thay đổi `core/` đi qua bạn
-- [ ] Rà `core/entities.py` ↔ class diagram: tên lớp, thuộc tính, method khớp 1:1; cập nhật bên nào lệch
-- [ ] Thiết lập quy trình git: nhánh `main` luôn chạy được, PR + review, quy tắc đặt tên nhánh
+- [ ] Make sure everyone can run `pytest` + `run_backend.sh` in week 1; fix environment problems (Python, venv, port 8000)
+- [ ] Finalize `docs/shared-contract.md` with the 4 members (enums, events, cross-module function signatures, relocation `plan` format); every change to `core/` goes through you
+- [ ] Review `core/entities.py` ↔ class diagram: class names, attributes and methods must match 1:1; update whichever side deviates
+- [ ] Set up the git workflow: `main` always runnable, PR + review, branch naming rules
 
 ### P1
-- [ ] Nối `register_event_handlers` của Member 3 vào lúc khởi động `app.py` và bật simulator của Member 2 (`telemetry.start_simulator`) khi các hàm đó xong
-- [ ] Mở rộng `configs/hubs-data.json` / `seed_data.py` theo nhu cầu demo (Hub gần đầy, xe pin thấp, cổng hỏng) – hỏi 4 bạn cần dữ liệu gì
-- [ ] Test tích hợp end-to-end theo 4 kịch bản trong `TEAM_TODO.md` (thêm `tests/test_integration.py`)
-- [ ] Kiểm tra đồng thời: nhiều request cùng đặt 1 tài nguyên (kết hợp test của Member 1 và 2)
+- [ ] Wire Member 3's `register_event_handlers` into `app.py` startup and enable Member 2's simulator (`telemetry.start_simulator`) once those functions are done
+- [ ] Extend `configs/hubs-data.json` / `seed_data.py` as the demo requires (nearly full Hub, low-battery vehicles, broken charging point) – ask the 4 members what data they need
+- [ ] End-to-end integration tests for the 4 scenarios in `TEAM_TODO.md` (add `tests/test_integration.py`)
+- [ ] Concurrency checks: many requests reserving the same resource (combine the tests of Members 1 and 2)
 
 ### P2
-- [ ] Giao diện chung: menu, trạng thái lỗi/"chưa làm", thống nhất style giữa các trang
-- [ ] Script reset dữ liệu demo nhanh trước mỗi lần diễn tập (`scripts/seed_data.py`)
-- [ ] Dọn code: xóa `todo(...)` còn sót, docstring lỗi thời, file không dùng
+- [ ] Shared UI: menu, error / "not implemented yet" states, a consistent style across pages
+- [ ] A script to quickly reset demo data before each rehearsal (`scripts/seed_data.py`)
+- [ ] Cleanup: remove leftover `todo(...)` calls, outdated docstrings and unused files
 
-## B. Tài liệu chung (làm chính, các bạn khác góp ý)
+## B. Shared documents (you lead; the others give feedback)
 
-| Mục | Nộp | Trạng thái |
+| Item | Deadline | Status |
 |---|---|---|
-| Mô tả bối cảnh, stakeholder, mục tiêu, phạm vi | #1 | ☐ |
-| Use-case diagram toàn hệ thống (gộp 4 spec) | #1 | ☐ |
-| Non-functional requirements chung | #1 | ☐ |
-| UI mockup chung | #2 | ☐ |
+| Context, stakeholders, goals, scope description | #1 | ☐ |
+| System-wide use-case diagram (merging the 4 specs) | #1 | ☐ |
+| Shared non-functional requirements | #1 | ☐ |
+| Shared UI mockups | #2 | ☐ |
 | Architectural design + Deployment view + Development/Implementation view | #3 | ☐ |
-| Class diagram tích hợp | #3 | ☐ |
-| Test case tổng hợp (bonus) | #3 | ☐ |
-| Gộp #1 + #2 + #3 + chuỗi màn hình demo thành **1 file PDF** | Final | ☐ |
+| Integrated class diagram | #3 | ☐ |
+| Consolidated test cases (bonus) | #3 | ☐ |
+| Merge #1 + #2 + #3 + the demo screen sequence into **1 PDF file** | Final | ☐ |
 
-Ngoài ra, giống các thành viên khác, Member 5 vẫn phải nộp tài liệu **cá nhân** theo yêu cầu của đề (xác nhận với thầy phần cá nhân của Member 5 gồm những use case nào, vì 4 bộ spec hiện đã có chủ).
+In addition, like every other member, Member 5 must still submit **individual** documents as required by the course (confirm with the instructor which use cases make up Member 5's individual part, since all 4 specs already have owners).
 
-## C. Họp nhóm & theo dõi
-- [ ] Họp mỗi tuần + biên bản (đề yêu cầu): họp đầu tiên bàn giao tiếp, cam kết, rủi ro chung và cách xử lý
-- [ ] Cập nhật bảng "điểm giao nhau" trong `TEAM_TODO.md` khi phát sinh thỏa thuận mới
-- [ ] Tổ chức buổi tích hợp ≥ 1 tuần trước demo và các buổi diễn tập demo
-- [ ] Đánh giá chéo thành viên cuối kỳ
+## C. Team meetings & tracking
+- [ ] Hold a weekly meeting with minutes (required by the course): the first meeting covers communication, commitment, shared risks and how to handle them
+- [ ] Update the "overlaps" table in `TEAM_TODO.md` whenever a new agreement is made
+- [ ] Organize an integration session ≥ 1 week before the demo, plus demo rehearsals
+- [ ] End-of-term peer evaluation

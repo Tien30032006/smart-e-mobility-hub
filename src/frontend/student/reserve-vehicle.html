@@ -1,19 +1,19 @@
 <!doctype html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Đặt xe / chỗ đỗ</title>
+  <title>Reserve Vehicle / Parking</title>
   <link rel="stylesheet" href="/app/assets/css/style.css">
 </head>
 <body data-role="student">
   <!-- OWNER: Member 1   USE CASES: U2, U3, U4, U5, U6
-       TODO: Form đặt xe (U2) và đặt chỗ đỗ (U3), hủy (U4), quét QR nhận xe (U5), trả xe (U6), báo sự cố (U7).
+       TODO: Vehicle reservation form (U2) and parking reservation (U3), cancel (U4), scan QR to pick up (U5), return vehicle (U6), report issue (U7).
        Rules: keep <nav id="nav"> and the 3 shared scripts; call Hub.init() first; show API results with
        Hub.render(el, promise, draw). Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
-    <h1>Đặt xe / chỗ đỗ</h1>
-    <p class="muted">Phụ trách: Member 1 · Use case: U2, U3, U4, U5, U6</p>
+    <h1>Reserve Vehicle / Parking</h1>
+    <p class="muted">Owner: Member 1 · Use cases: U2, U3, U4, U5, U6</p>
     <div id="app" class="card"></div>
   </main>
   <script src="/shared/api-client.js"></script>
