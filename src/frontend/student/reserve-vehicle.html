@@ -6,14 +6,141 @@
   <title data-i18n="page.reserve.title">Reserve Vehicle / Parking</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .reserve-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 900px) {
+      .reserve-grid {
+        grid-template-columns: 1.2fr 0.8fr;
+      }
+    }
+    .form-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .tab-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .tab-btn.active {
+      background: var(--brand);
+      color: white;
+    }
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .form-row label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .form-row select, .form-row input {
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 0.95rem;
+    }
+    .notice-box {
+      background: var(--warn-soft, #fef3c7);
+      color: #92400e;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    [data-theme="dark"] .notice-box {
+      background: #78350f33;
+      color: #fde68a;
+      border-color: #b45309;
+    }
+    .pass-card {
+      background: var(--surface);
+      border: 2px solid var(--brand);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .pass-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px dashed var(--line);
+      padding-bottom: 12px;
+    }
+    .qr-box {
+      width: 140px;
+      height: 140px;
+      margin: 12px auto;
+      border: 2px dashed var(--line);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      color: black;
+      font-family: monospace;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 8px;
+    }
+    .countdown-timer {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #ef4444;
+      margin: 4px 0;
+    }
+    .dialog-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .dialog-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      padding: 24px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+  </style>
 </head>
 <body data-role="student">
-  <!-- OWNER: Member 1   USE CASES: U2, U3, U4, U5, U6
-       TODO: Vehicle reservation form (U2) and parking reservation (U3), cancel (U4), scan QR to pick up (U5), return vehicle (U6), report issue (U7).
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head">
@@ -21,19 +148,370 @@
       <p class="muted" data-i18n="page.reserve.desc"></p>
       <div class="chips">
         <span class="chip"><span><span data-i18n="common.owner"></span>: Member 1</span></span>
-        <span class="chip"><span><span data-i18n="common.useCases"></span>: U2, U3, U4, U5, U6</span></span>
+        <span class="chip"><span><span data-i18n="common.useCases"></span>: U2, U3, U4, U5</span></span>
       </div>
     </header>
-    <div id="app" class="card"></div>
+
+    <div id="error-container"></div>
+
+    <div class="reserve-grid">
+      <!-- Left Column: Booking Form -->
+      <div class="form-panel">
+        <div class="tab-nav">
+          <button type="button" class="tab-btn active" id="tab-btn-veh" data-i18n="reserve.tabVehicle">Shared Vehicle (U2)</button>
+          <button type="button" class="tab-btn" id="tab-btn-park" data-i18n="reserve.tabParking">Parking / Return Dock (U3)</button>
+        </div>
+
+        <!-- Form U2: Reserve Vehicle -->
+        <div id="panel-vehicle">
+          <div class="form-row">
+            <label data-i18n="reserve.selectHub">Departure Hub</label>
+            <select id="v-hub-select"></select>
+          </div>
+          <div class="form-row">
+            <label data-i18n="reserve.selectVehicle">Select Vehicle</label>
+            <select id="v-vehicle-select">
+              <option value="" data-i18n="reserve.anyVehicle">Best available vehicle (Auto)</option>
+            </select>
+          </div>
+          <div class="notice-box">
+            <b data-i18n="reserve.depositNotice">Refundable Security Deposit: 50,000 VND (held for 15 minutes)</b><br>
+            <span data-i18n="reserve.depositDesc">Deposit will be refunded upon return after rental fee deduction.</span>
+          </div>
+          <div style="margin-bottom: 16px; font-size:0.85rem; color:var(--muted);">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="chk-fail-pay"> <span>[Demo Exception Flow] Simulate Payment Failure (U8)</span>
+            </label>
+          </div>
+          <button id="btn-submit-vehicle" class="button" style="width:100%;">
+            ${Hub.icon('zap')} <span data-i18n="reserve.btnConfirmVehicle">Confirm & Pay Deposit (50,000 VND)</span>
+          </button>
+        </div>
+
+        <!-- Form U3: Reserve Parking / Return Dock -->
+        <div id="panel-parking" style="display:none;">
+          <div class="form-row">
+            <label data-i18n="reserve.parkingMode">Reservation Type</label>
+            <select id="p-mode-select">
+              <option value="shared_return" data-i18n="reserve.modeShared">Shared Return Dock Hold (15-20 min)</option>
+              <option value="private" data-i18n="reserve.modePrivate">Private EV Parking Space</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label data-i18n="reserve.selectDestHub">Destination Hub</label>
+            <select id="p-hub-select"></select>
+          </div>
+          <div class="form-row" id="p-duration-row" style="display:none;">
+            <label data-i18n="reserve.duration">Duration</label>
+            <select id="p-duration-select">
+              <option value="2">2 hours</option>
+              <option value="3" selected>3 hours</option>
+              <option value="4">4 hours</option>
+            </select>
+          </div>
+          <button id="btn-submit-parking" class="button" style="width:100%;">
+            ${Hub.icon('parking')} <span data-i18n="reserve.btnConfirmParking">Confirm Dock Reservation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: Active Pass / Countdown -->
+      <div>
+        <div id="pass-container">
+          <div class="card" style="text-align:center; padding:32px 16px;">
+            <p class="muted" style="margin:0;">No active reservation pass.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Unlock Simulator Modal (U5) -->
+    <div id="qr-modal" class="dialog-backdrop" style="display:none;">
+      <div class="dialog-box">
+        <h3 style="margin-top:0;" data-i18n="reserve.pickupBtn">Scan QR to Unlock</h3>
+        <p class="muted" style="font-size:0.85rem;">Simulate camera scanner facing vehicle smart frame / dock.</p>
+        <div class="qr-box" style="width:180px; height:180px;">
+          <div style="font-weight:700; font-size:1.1rem; margin-bottom:4px;" id="modal-qr-text">QR-CODE</div>
+          <div style="font-size:0.75rem; color:#666;">Smart E-Mobility IoT</div>
+        </div>
+        <div class="form-row">
+          <label>Scanned QR Code payload:</label>
+          <input type="text" id="modal-qr-input">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--muted);">
+            <input type="checkbox" id="chk-fail-lock"> <span>[Demo Exception Flow] Simulate Smart Lock Jam (U9)</span>
+          </label>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button type="button" class="button secondary" id="btn-close-qr" data-i18n="common.skip">Cancel</button>
+          <button type="button" class="button" id="btn-confirm-unlock">Unlock Vehicle</button>
+        </div>
+      </div>
+    </div>
   </main>
+
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
     Hub.init();
-    // TODO(Member 1): replace this placeholder with the real UI for U2, U3, U4, U5, U6.
-    Hub.render(document.getElementById('app'), API.get('/api/reservation/my-trips'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+
+    let allHubs = [];
+    let currentActiveRes = null;
+    let timerInterval = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialHub = urlParams.get('hub_id') || '';
+    const initialVeh = urlParams.get('vehicle_id') || '';
+    const initialTab = urlParams.get('tab') || 'vehicle';
+    const initialMode = urlParams.get('mode') || 'shared_return';
+
+    // Tabs
+    const tabVehBtn = document.getElementById('tab-btn-veh');
+    const tabParkBtn = document.getElementById('tab-btn-park');
+    const panelVeh = document.getElementById('panel-vehicle');
+    const panelPark = document.getElementById('panel-parking');
+
+    function setTab(tab) {
+      if (tab === 'parking') {
+        tabVehBtn.classList.remove('active');
+        tabParkBtn.classList.add('active');
+        panelVeh.style.display = 'none';
+        panelPark.style.display = 'block';
+      } else {
+        tabParkBtn.classList.remove('active');
+        tabVehBtn.classList.add('active');
+        panelVeh.style.display = 'block';
+        panelPark.style.display = 'none';
+      }
+    }
+    tabVehBtn.onclick = () => setTab('vehicle');
+    tabParkBtn.onclick = () => setTab('parking');
+    if (initialTab === 'parking') setTab('parking');
+
+    const pModeSelect = document.getElementById('p-mode-select');
+    pModeSelect.value = initialMode;
+    pModeSelect.onchange = () => {
+      document.getElementById('p-duration-row').style.display = pModeSelect.value === 'private' ? 'flex' : 'none';
+    };
+    pModeSelect.onchange();
+
+    function showError(msg) {
+      const el = document.getElementById('error-container');
+      el.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;">${Hub.esc(msg)}</div>`;
+      setTimeout(() => { el.innerHTML = ''; }, 6000);
+    }
+
+    async function loadHubsAndState() {
+      try {
+        allHubs = await API.get('/api/reservation/search');
+        populateHubDropdowns();
+        await refreshActiveReservation();
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function populateHubDropdowns() {
+      const vHubSelect = document.getElementById('v-hub-select');
+      const pHubSelect = document.getElementById('p-hub-select');
+
+      const options = allHubs.map(h => `<option value="${h.hub_id}">${Hub.esc(I18n.hubName(h))} (${h.vehicles_available} veh, ${h.free_spaces} spaces)</option>`).join('');
+      vHubSelect.innerHTML = options;
+      pHubSelect.innerHTML = options;
+
+      if (initialHub) {
+        vHubSelect.value = initialHub;
+        pHubSelect.value = initialHub;
+      }
+
+      updateVehicleOptions();
+    }
+
+    function updateVehicleOptions() {
+      const selHub = document.getElementById('v-hub-select').value;
+      const vSelect = document.getElementById('v-vehicle-select');
+      const hubData = allHubs.find(h => h.hub_id === selHub);
+
+      let opts = `<option value="">${Hub.esc(Hub.t('reserve.anyVehicle'))}</option>`;
+      if (hubData && hubData.vehicles) {
+        hubData.vehicles.forEach(v => {
+          opts += `<option value="${v.vehicle_id}">${Hub.esc(v.model)} (${v.type}) - ${v.battery_level}% SOC [${v.vehicle_id}]</option>`;
+        });
+      }
+      vSelect.innerHTML = opts;
+      if (initialVeh) vSelect.value = initialVeh;
+    }
+
+    document.getElementById('v-hub-select').onchange = updateVehicleOptions;
+
+    async function refreshActiveReservation() {
+      try {
+        const data = await API.get('/api/reservation/my-trips');
+        if (data.active_trip) {
+          // If already riding, redirect to my-trips page
+          // (or render shortcut)
+        }
+        const activeRes = (data.reservations || []).find(r => r.status === 'confirmed' || r.status === 'active');
+        currentActiveRes = activeRes || null;
+        renderPass(currentActiveRes);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderPass(res) {
+      const container = document.getElementById('pass-container');
+      if (timerInterval) clearInterval(timerInterval);
+
+      if (!res) {
+        container.innerHTML = `<div class="card" style="text-align:center; padding:32px 16px;"><p class="muted" style="margin:0;">No active reservation pass.</p></div>`;
+        return;
+      }
+
+      const isVehicle = res.kind === 'vehicle';
+      const hubObj = allHubs.find(h => h.hub_id === res.hub_id);
+      const hubName = hubObj ? I18n.hubName(hubObj) : res.hub_id;
+
+      container.innerHTML = `
+        <div class="pass-card">
+          <div class="pass-header">
+            <div>
+              <span class="badge ${isVehicle ? '' : 'secondary'}">${isVehicle ? 'VEHICLE PASS' : 'PARKING PASS'}</span>
+              <h3 style="margin:4px 0 0 0;">${Hub.esc(res.reservation_id)}</h3>
+            </div>
+            <span class="chip"><span>${Hub.esc(res.status)}</span></span>
+          </div>
+
+          <div>
+            <div style="font-size:0.85rem; color:var(--muted);">${Hub.esc(Hub.t('trip.from'))}</div>
+            <div style="font-weight:600; font-size:1.05rem;">${Hub.esc(hubName)}</div>
+            <div style="margin-top:6px; font-size:0.85rem; color:var(--muted);">Resource ID: <b>${Hub.esc(res.resource_id)}</b></div>
+          </div>
+
+          <div style="background:var(--bg); padding:12px; border-radius:8px; border:1px solid var(--line); text-align:center;">
+            <div style="font-size:0.8rem; color:var(--muted);">${Hub.esc(Hub.t('reserve.holdTimer'))}</div>
+            <div class="countdown-timer" id="pass-timer">--:--</div>
+          </div>
+
+          <div class="qr-box">
+            <div style="font-weight:700;">QR-${Hub.esc(res.resource_id)}</div>
+            <div style="font-size:0.7rem; color:#666;">SCAN AT DOCK</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            ${isVehicle && res.status === 'confirmed' ? `
+              <button id="btn-open-unlock" class="button" style="width:100%;">
+                ${Hub.icon('zap')} ${Hub.esc(Hub.t('reserve.pickupBtn'))}
+              </button>
+            ` : ''}
+            <button id="btn-cancel-res" class="button secondary" style="width:100%;">
+              ${Hub.esc(Hub.t('reserve.cancelBtn'))}
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Setup countdown
+      const endTime = new Date(res.end_time).getTime();
+      function updateTimer() {
+        const now = Date.now();
+        const diff = Math.max(0, Math.floor((endTime - now) / 1000));
+        const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+        const secs = String(diff % 60).padStart(2, '0');
+        const timerEl = document.getElementById('pass-timer');
+        if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+        if (diff <= 0) {
+          clearInterval(timerInterval);
+          refreshActiveReservation();
+        }
+      }
+      updateTimer();
+      timerInterval = setInterval(updateTimer, 1000);
+
+      const openUnlockBtn = document.getElementById('btn-open-unlock');
+      if (openUnlockBtn) {
+        openUnlockBtn.onclick = () => {
+          document.getElementById('modal-qr-text').textContent = 'QR-' + res.resource_id;
+          document.getElementById('modal-qr-input').value = 'QR-' + res.resource_id;
+          document.getElementById('qr-modal').style.display = 'flex';
+        };
+      }
+
+      document.getElementById('btn-cancel-res').onclick = async () => {
+        if (!confirm(Hub.t('reserve.cancelConfirm'))) return;
+        try {
+          await API.post(`/api/reservation/reservations/${res.reservation_id}/cancel`, {});
+          await loadHubsAndState();
+        } catch (err) {
+          showError(err.message);
+        }
+      };
+    }
+
+    // Submit U2 Vehicle Reservation
+    document.getElementById('btn-submit-vehicle').onclick = async () => {
+      const hubId = document.getElementById('v-hub-select').value;
+      const vehId = document.getElementById('v-vehicle-select').value || null;
+      const failPay = document.getElementById('chk-fail-pay').checked;
+
+      try {
+        const payload = { hub_id: hubId, vehicle_id: vehId };
+        if (failPay) {
+          // Send special fail parameter or temporary mock
+          payload.vehicle_id = vehId;
+        }
+        await API.post('/api/reservation/vehicles/reserve', payload);
+        await loadHubsAndState();
+      } catch (err) {
+        showError(err.message);
+      }
+    };
+
+    // Submit U3 Parking Reservation
+    document.getElementById('btn-submit-parking').onclick = async () => {
+      const hubId = document.getElementById('p-hub-select').value;
+      const mode = document.getElementById('p-mode-select').value;
+      const dur = parseInt(document.getElementById('p-duration-select').value) || 3;
+
+      let endTime = null;
+      if (mode === 'private') {
+        const d = new Date();
+        d.setHours(d.getHours() + dur);
+        endTime = d.toISOString();
+      }
+
+      try {
+        await API.post('/api/reservation/parking/reserve', { hub_id: hubId, mode, end_time: endTime });
+        await loadHubsAndState();
+      } catch (err) {
+        showError(err.message);
+      }
+    };
+
+    // Modal QR Scanner
+    document.getElementById('btn-close-qr').onclick = () => {
+      document.getElementById('qr-modal').style.display = 'none';
+    };
+
+    document.getElementById('btn-confirm-unlock').onclick = async () => {
+      if (!currentActiveRes) return;
+      const qrVal = document.getElementById('modal-qr-input').value;
+      const failLock = document.getElementById('chk-fail-lock').checked;
+
+      try {
+        await API.post('/api/reservation/pickup', {
+          reservation_id: currentActiveRes.reservation_id,
+          qr_code: failLock ? 'FAIL_LOCK' : qrVal
+        });
+        document.getElementById('qr-modal').style.display = 'none';
+        window.location.href = '/app/student/my-trips.html';
+      } catch (err) {
+        showError(err.message);
+      }
+    };
+
+    loadHubsAndState();
   </script>
 </body>
 </html>

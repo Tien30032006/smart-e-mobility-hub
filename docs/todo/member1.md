@@ -12,31 +12,31 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ### P0 – do first; others depend on it / foundation
 
-- [ ] **U1 search Hubs & vehicles** — `service.search_hubs_and_vehicles`, `get_vehicle_detail`
+- [x] **U1 search Hubs & vehicles** — `service.search_hubs_and_vehicles`, `get_vehicle_detail`
   - Filter by vehicle type / minimum battery; return battery %, number of free parking spaces; for a private vehicle only a Hub with free space is needed.
-- [ ] **U2 reserve a vehicle** — `service.reserve_vehicle` + `core/allocation_service.allocate_vehicle`
+- [x] **U2 reserve a vehicle** — `service.reserve_vehicle` + `core/allocation_service.allocate_vehicle`
   - Inside `network.lock`: pick an AVAILABLE vehicle → RESERVED, create `Reservation(kind=VEHICLE)`, hold for 15 minutes, take a deposit via U8. Two students reserving the same vehicle → the second gets 409.
-- [ ] **U3 reserve a parking space** — `service.reserve_parking_slot` + `allocate_parking_space`
+- [x] **U3 reserve a parking space** — `service.reserve_parking_slot` + `allocate_parking_space`
   - Set `ParkingSpace.reserved_by`; two modes: returning a rented vehicle (shared_return) and a private vehicle (private).
-- [ ] **U8 payment (mock)** — `payment_gateway.py`
+- [x] **U8 payment (mock)** — `payment_gateway.py`
   - In-memory ledger, fake `transaction_id`, and the ability to decline a payment to demo the exception flow.
 
 ### P1 – main features for the demo
 
-- [ ] **U4 cancel** — `service.cancel_reservation`
+- [x] **U4 cancel** — `service.cancel_reservation`
   - Release the vehicle/space, refund the deposit, emit `RESERVATION_CANCELLED`. **Member 3 calls this function (UC-OP07)**, so do it early.
-- [ ] **U5 pick up vehicle + U9** — `pick_up_vehicle`, `smart_lock.unlock`
+- [x] **U5 pick up vehicle + U9** — `pick_up_vehicle`, `smart_lock.unlock`
   - Check the QR / reservation is still valid → unlock → vehicle IN_USE → create a trip record. Support walk-up pickup without a reservation.
-- [ ] **U6 return vehicle** — `return_vehicle`, `smart_lock.lock`
+- [x] **U6 return vehicle** — `return_vehicle`, `smart_lock.lock`
   - Use `network.move_vehicle`; if the Hub is full, suggest another Hub; compute the trip fee (U8).
-- [ ] **U7 report issue** — `report_issue`
+- [x] **U7 report issue** — `report_issue`
   - Store the issue and `bus.emit(ISSUE_REPORTED, payload exactly as in the contract)` – **Member 3 depends on this**.
 
 ### P2 – polish
 
-- [ ] **Reservation expiry** — a job/function that scans `Reservation.is_expired()` → EXPIRED and releases the resource
-- [ ] **Trip history** — `list_my_trips` + the `my-trips.html` page
-- [ ] **UI** — the 3 student pages fully built, showing 409/400 errors clearly
+- [x] **Reservation expiry** — a job/function that scans `Reservation.is_expired()` → EXPIRED and releases the resource
+- [x] **Trip history** — `list_my_trips` + the `my-trips.html` page
+- [x] **UI** — the 3 student pages fully built, showing 409/400 errors clearly
 
 ## B. Personal documents (course requirement: each member covers their own use cases)
 
@@ -64,10 +64,10 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ## D. Minimum tests required
 
-- [ ] Two students reserve the same vehicle → only one succeeds (use `threading` to simulate concurrency)
-- [ ] Cancel → vehicle returns to AVAILABLE, deposit refunded
-- [ ] Returning a vehicle to a full Hub is rejected
-- [ ] `report_issue` emits the correct event
+- [x] Two students reserve the same vehicle → only one succeeds (use `threading` to simulate concurrency)
+- [x] Cancel → vehicle returns to AVAILABLE, deposit refunded
+- [x] Returning a vehicle to a full Hub is rejected
+- [x] `report_issue` emits the correct event
 
 ## E. Shared team work (you contribute too)
 
@@ -79,8 +79,8 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ## F. Definition of Done for each use case
 
-- [ ] The `service` function handles the main flow **and** the exception flows from the spec
-- [ ] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
-- [ ] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
-- [ ] The UI page is usable (no more yellow TODO box)
+- [x] The `service` function handles the main flow **and** the exception flows from the spec
+- [x] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
+- [x] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
+- [x] The UI page is usable (no more yellow TODO box)
 - [ ] Sequence + activity diagrams match the real code
