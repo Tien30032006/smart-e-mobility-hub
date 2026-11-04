@@ -5,6 +5,11 @@
   <meta name="color-scheme" content="light dark">
   <title data-i18n="page.findHub.title">Find Hub & Vehicle</title>
   <script src="/shared/i18n.js"></script>
+  <!-- Leaflet 1.9 CDN & CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Shared Leaflet Wrapper -->
+  <script src="/shared/map.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
   <style>
     .filter-bar {
@@ -16,7 +21,7 @@
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
     .filter-group {
       display: flex;
@@ -32,7 +37,7 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-    .filter-group select, .filter-group input {
+    .filter-group select {
       padding: 8px 12px;
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -40,57 +45,41 @@
       color: var(--ink);
       font-size: 0.9rem;
     }
-    .campus-map-card {
+    .map-container-wrap {
+      position: relative;
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 24px;
-    }
-    .map-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .map-legend {
-      display: flex;
-      gap: 12px;
-      font-size: 0.8rem;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .dot.green { background: #10b981; }
-    .dot.yellow { background: #f59e0b; }
-    .dot.red { background: #ef4444; }
-    .svg-map-wrapper {
-      position: relative;
-      width: 100%;
-      border-radius: 8px;
-      background: var(--bg);
-      border: 1px dashed var(--line);
       overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
     }
-    .svg-map {
+    #leaflet-map {
       width: 100%;
-      height: 260px;
-      display: block;
+      height: 380px;
+      z-index: 1;
     }
-    .hub-pin {
-      cursor: pointer;
-      transition: transform 0.2s ease;
+    .map-overlay-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
     }
-    .hub-pin:hover {
-      transform: scale(1.05);
+    .map-notice-banner {
+      background: var(--warn-soft, #fef3c7);
+      color: #92400e;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    [data-theme="dark"] .map-notice-banner {
+      background: #78350f33;
+      color: #fde68a;
     }
     .hub-list {
       display: flex;
@@ -115,10 +104,6 @@
       margin-bottom: 16px;
       flex-wrap: wrap;
       gap: 12px;
-    }
-    .hub-title-group h2 {
-      margin: 0 0 4px 0;
-      font-size: 1.25rem;
     }
     .sub-section-title {
       font-size: 0.95rem;
@@ -206,7 +191,7 @@
     <!-- Filters Bar -->
     <div class="filter-bar">
       <div class="filter-group">
-        <label data-i18n="filter.fromHub">Origin Hub</label>
+        <label data-i18n="filter.fromHub">Departure Hub</label>
         <select id="sel-from-hub">
           <option value="" data-i18n="filter.allHubs">All Hubs</option>
           <option value="HUB-METRO">VNU Metro Station</option>
@@ -239,28 +224,18 @@
       </div>
     </div>
 
-    <!-- Interactive Campus Map Section -->
-    <div class="campus-map-card">
-      <div class="map-header">
-        <h2 style="font-size:1.1rem; margin:0;" data-i18n="map.title">Interactive Campus Hub Map</h2>
-        <div class="map-legend">
-          <span class="legend-item"><span class="dot green"></span><span data-i18n="map.highAvail">Available (>30%)</span></span>
-          <span class="legend-item"><span class="dot yellow"></span><span data-i18n="map.lowAvail">Limited (<30%)</span></span>
-          <span class="legend-item"><span class="dot red"></span><span data-i18n="map.full">Full (0 free)</span></span>
-        </div>
+    <!-- Leaflet OpenStreetMap Interactive Map Section -->
+    <div class="map-container-wrap">
+      <div id="geo-notice" class="map-notice-banner" style="display:none;">
+        <span id="geo-notice-text">Location notice</span>
+        <button type="button" class="button secondary" id="btn-dismiss-notice" style="padding:4px 8px; font-size:0.75rem;">OK</button>
       </div>
-      <div class="svg-map-wrapper">
-        <svg class="svg-map" viewBox="0 0 800 260" id="campus-svg-map">
-          <!-- Campus Paths -->
-          <line x1="160" y1="70" x2="640" y2="70" stroke="var(--line)" stroke-dasharray="6,6" stroke-width="2"/>
-          <line x1="160" y1="70" x2="220" y2="190" stroke="var(--line)" stroke-dasharray="6,6" stroke-width="2"/>
-          <line x1="640" y1="70" x2="580" y2="190" stroke="var(--line)" stroke-dasharray="6,6" stroke-width="2"/>
-          <line x1="220" y1="190" x2="580" y2="190" stroke="var(--line)" stroke-dasharray="6,6" stroke-width="2"/>
-
-          <!-- Dynamic Pins will be rendered here -->
-          <g id="map-pins-layer"></g>
-        </svg>
+      <div class="map-overlay-controls">
+        <button type="button" class="button secondary" id="btn-my-loc" style="background:var(--surface); box-shadow:0 2px 8px rgba(0,0,0,0.15);" title="Locate Me">
+          ${Hub.icon('user')} Find Me
+        </button>
       </div>
+      <div id="leaflet-map"></div>
     </div>
 
     <!-- Main Content Container for Hubs -->
@@ -272,14 +247,61 @@
   <script>
     Hub.init();
 
-    const HUB_COORDS = {
-      'HUB-KTX': { x: 160, y: 70 },
-      'HUB-METRO': { x: 640, y: 70 },
-      'HUB-CAMPUS': { x: 220, y: 190 },
-      'HUB-LIB': { x: 580, y: 190 }
+    let leafletMap = null;
+    let mapMarkers = [];
+    let userLocMarker = null;
+    let currentUserCoord = null;
+    let currentHubs = [];
+    let currentFilters = { from_hub: '', vehicle_type: '', min_battery: 0 };
+
+    function initLeaflet() {
+      if (leafletMap || typeof L === 'undefined') return;
+
+      leafletMap = HubMap.initMap('leaflet-map', {
+        onTileError: () => {
+          showNotice('Map rendering unavailable. Displaying cached Hub metrics.');
+        }
+      });
+
+      // Try GPS Geolocation (Step 1 of U1)
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            currentUserCoord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            if (leafletMap) {
+              userLocMarker = HubMap.userMarker(leafletMap, currentUserCoord.lat, currentUserCoord.lng);
+            }
+          },
+          err => {
+            // Flow ngoại lệ 1: Location denied -> default viewpoint to Metro Station / Central Hub
+            showNotice('Location permission denied. Viewpoint centered at Central Hub. Pick a Hub manually below.');
+            currentUserCoord = { lat: 10.8790, lng: 106.8060 }; // HUB-METRO
+          },
+          { timeout: 5000 }
+        );
+      }
+    }
+
+    function showNotice(msg) {
+      const banner = document.getElementById('geo-notice');
+      const text = document.getElementById('geo-notice-text');
+      if (banner && text) {
+        text.textContent = msg;
+        banner.style.display = 'flex';
+      }
+    }
+
+    document.getElementById('btn-dismiss-notice').onclick = () => {
+      document.getElementById('geo-notice').style.display = 'none';
     };
 
-    let currentFilters = { from_hub: '', vehicle_type: '', min_battery: 0 };
+    document.getElementById('btn-my-loc').onclick = () => {
+      if (currentUserCoord && leafletMap) {
+        HubMap.flyTo(leafletMap, currentUserCoord.lat, currentUserCoord.lng, 16);
+      } else {
+        showNotice('Detecting your location...');
+      }
+    };
 
     function fetchHubs() {
       let query = [];
@@ -289,41 +311,38 @@
       const url = '/api/reservation/search' + (query.length ? '?' + query.join('&') : '');
 
       Hub.render(document.getElementById('app'), API.get(url), hubs => {
-        renderMapPins(hubs);
-        renderHubList(hubs);
+        currentHubs = hubs || [];
+        initLeaflet();
+        renderMapMarkers(currentHubs);
+        renderHubList(currentHubs);
       });
     }
 
-    function renderMapPins(hubs) {
-      const pinsLayer = document.getElementById('map-pins-layer');
-      if (!pinsLayer) return;
-      pinsLayer.innerHTML = '';
+    function renderMapMarkers(hubs) {
+      if (!leafletMap) return;
+
+      // Clear existing markers
+      mapMarkers.forEach(m => leafletMap.removeLayer(m));
+      mapMarkers = [];
 
       hubs.forEach(h => {
-        const coord = HUB_COORDS[h.hub_id] || { x: 400, y: 130 };
-        const color = h.free_spaces === 0 ? '#ef4444' : (h.vehicles_available > 0 ? '#10b981' : '#f59e0b');
-        const name = I18n.hubName(h);
-
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        g.setAttribute('class', 'hub-pin');
-        g.setAttribute('transform', `translate(${coord.x}, ${coord.y})`);
-        g.onclick = () => {
-          const el = document.getElementById('card-' + h.hub_id);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.classList.add('highlighted');
-            setTimeout(() => el.classList.remove('highlighted'), 2000);
+        const marker = HubMap.hubMarker(leafletMap, h, selectedHub => {
+          selectHubCard(selectedHub.hub_id);
+          if (currentUserCoord && selectedHub.location) {
+            HubMap.routeTo(leafletMap, currentUserCoord, selectedHub.location);
           }
-        };
-
-        g.innerHTML = `
-          <circle r="22" fill="${color}" fill-opacity="0.2"/>
-          <circle r="12" fill="${color}" stroke="white" stroke-width="2"/>
-          <text y="30" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">${Hub.esc(name)}</text>
-          <text y="44" text-anchor="middle" fill="var(--muted)" font-size="10">${h.vehicles_available} 🚲 | ${h.free_spaces} 🅿️</text>
-        `;
-        pinsLayer.appendChild(g);
+        });
+        if (marker) mapMarkers.push(marker);
       });
+    }
+
+    function selectHubCard(hubId) {
+      const el = document.getElementById('card-' + hubId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlighted');
+        setTimeout(() => el.classList.remove('highlighted'), 2000);
+      }
     }
 
     function renderHubList(hubs) {
@@ -378,13 +397,16 @@
           <div class="hub-detail-card" id="card-${Hub.esc(h.hub_id)}">
             <div class="hub-card-header">
               <div class="hub-title-group">
-                <h2>${Hub.esc(hubName)}</h2>
+                <h2 style="margin:0 0 4px 0;">${Hub.esc(hubName)}</h2>
                 <div class="chips">
                   <span class="chip"><span>${h.capacity} spaces</span></span>
                   <span class="chip ${nearFull ? 'warn' : ''}"><span>${utilPct}% ${Hub.esc(Hub.t('hub.utilization'))}</span></span>
                 </div>
               </div>
               <div style="display:flex; gap:8px;">
+                <button type="button" class="button secondary btn-show-route" data-hub="${Hub.esc(h.hub_id)}" style="font-size:0.85rem;">
+                  Walk Route
+                </button>
                 <a href="/app/student/reserve-vehicle.html?tab=parking&hub_id=${encodeURIComponent(h.hub_id)}"
                    class="button secondary" style="text-decoration:none;">
                    ${Hub.icon('parking')} ${Hub.esc(Hub.t('vehicle.parkBtn'))}
@@ -392,13 +414,13 @@
               </div>
             </div>
 
-            <!-- Shared Vehicles Section -->
+            <!-- Dual-panel section 1: Shared Fleet -->
             <div class="sub-section-title">
               ${Hub.icon('bike')} ${Hub.esc(Hub.t('hub.sharedFleetSection'))} (${h.vehicles_available})
             </div>
             ${vehiclesHtml}
 
-            <!-- Private EV Section -->
+            <!-- Dual-panel section 2: Private EV & Infrastructure -->
             <div class="sub-section-title">
               ${Hub.icon('plug')} ${Hub.esc(Hub.t('hub.privateEvSection'))}
             </div>
@@ -421,6 +443,20 @@
           </div>
         `;
       }).join('');
+
+      container.querySelectorAll('.btn-show-route').forEach(btn => {
+        btn.onclick = () => {
+          const hubId = btn.dataset.hub;
+          const targetHub = currentHubs.find(h => h.hub_id === hubId);
+          if (targetHub && leafletMap && targetHub.location) {
+            HubMap.flyTo(leafletMap, targetHub.location.lat, targetHub.location.lng, 16);
+            if (currentUserCoord) {
+              HubMap.routeTo(leafletMap, currentUserCoord, targetHub.location);
+            }
+            window.scrollTo({ top: 120, behavior: 'smooth' });
+          }
+        };
+      });
     }
 
     document.getElementById('btn-filter').onclick = () => {

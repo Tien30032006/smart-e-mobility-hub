@@ -5,6 +5,8 @@
   <meta name="color-scheme" content="light dark">
   <title data-i18n="page.reserve.title">Reserve Vehicle / Parking</title>
   <script src="/shared/i18n.js"></script>
+  <!-- Client-side QRCode Generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
   <style>
     .reserve-grid {
@@ -394,10 +396,8 @@
             <div class="countdown-timer" id="pass-timer">--:--</div>
           </div>
 
-          <div class="qr-box">
-            <div style="font-weight:700;">QR-${Hub.esc(res.resource_id)}</div>
-            <div style="font-size:0.7rem; color:#666;">SCAN AT DOCK</div>
-          </div>
+          <div class="qr-box" id="pass-qrcode" style="width:140px; height:140px; padding:10px;"></div>
+          <div style="font-size:0.75rem; color:var(--muted); text-align:center;">Scan with IoT dock camera</div>
 
           <div style="display:flex; flex-direction:column; gap:10px;">
             ${isVehicle && res.status === 'confirmed' ? `
@@ -411,6 +411,21 @@
           </div>
         </div>
       `;
+
+      if (typeof QRCode !== 'undefined') {
+        try {
+          new QRCode(document.getElementById('pass-qrcode'), {
+            text: 'QR-' + res.resource_id,
+            width: 120,
+            height: 120,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } catch (e) {
+          console.warn('QRCode rendering error:', e);
+        }
+      }
 
       // Setup countdown
       const endTime = new Date(res.end_time).getTime();

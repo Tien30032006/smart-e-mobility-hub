@@ -327,3 +327,66 @@ def test_api_reservation_endpoints(client):
     assert res.status_code == 200
     assert res.json()["issue_id"].startswith("ISSUE-")
 
+
+def test_student_wallet_topup_and_callback(client):
+    """Test wallet balance, top-up order generation, HMAC verification & idempotent callback."""
+    from src.backend.tests.conftest import STUDENT
+
+    # GET /api/wallet (initial balance: 200,000 VND)
+    res = client.get("/api/wallet", headers=STUDENT)
+    assert res.status_code == 200
+    w = res.json()
+    assert w["balance"] == 200000.0
+    assert w["available_balance"] == 200000.0
+
+    # POST /api/wallet/topup (create 100,000 VND top-up)
+    res = client.post("/api/wallet/topup", json={"amount": 100000}, headers=STUDENT)
+    assert res.status_code == 200
+    order = res.json()
+    assert order["order_id"].startswith("ORD-")
+    assert order["amount"] == 100000
+    assert "signature" in order
+    assert "mock-checkout.html" in order["pay_url"]
+
+    # Invalid HMAC signature should be rejected with 400
+    fake_callback = {
+        "order_id": order["order_id"],
+        "amount": 100000,
+        "user_id": "U-S01",
+        "signature": "fake-bad-signature",
+        "success": True,
+    }
+    res = client.post("/api/payments/callback", json=fake_callback)
+    assert res.status_code == 400
+
+    # Valid callback should credit wallet
+    valid_callback = {
+        "order_id": order["order_id"],
+        "amount": 100000,
+        "user_id": "U-S01",
+        "signature": order["signature"],
+        "success": True,
+    }
+    res = client.post("/api/payments/callback", json=valid_callback)
+    assert res.status_code == 200
+    cb_data = res.json()
+    assert cb_data["status"] == "completed"
+    assert cb_data["new_balance"] == 300000.0
+    assert cb_data["idempotent"] is False
+
+    # Idempotent call: duplicate callback does not credit twice
+    res = client.post("/api/payments/callback", json=valid_callback)
+    assert res.status_code == 200
+    assert res.json()["idempotent"] is True
+
+    # Verify wallet has exactly 300,000 VND
+    res = client.get("/api/wallet", headers=STUDENT)
+    assert res.json()["balance"] == 300000.0
+
+    # GET /api/wallet/transactions
+    res = client.get("/api/wallet/transactions", headers=STUDENT)
+    assert res.status_code == 200
+    txs = res.json()
+    assert any(t["type"] == "topup" for t in txs)
+
+
