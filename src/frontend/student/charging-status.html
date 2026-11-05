@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark"><title data-i18n="charging.statusPage">My charging</title>
+<script src="/shared/i18n.js"></script><link rel="stylesheet" href="/app/assets/css/style.css"><link rel="stylesheet" href="charging-common.css"></head>
+<body data-role="student"><nav id="nav"></nav><main>
+<header class="page-head"><h1 data-i18n="charging.statusPage"></h1><p id="live-state" class="muted" data-i18n="charging.autoRefresh"></p></header>
+<nav id="charging-nav" class="charging-tabs" aria-label="Charging"></nav><div id="message" role="status" aria-live="polite"></div>
+<button class="secondary" type="button" id="refresh" data-i18n="charging.refresh"></button>
+<section id="bookings" class="grid"></section><h2 data-i18n="charging.notifications"></h2><section id="notifications"></section>
+</main><script src="/shared/api-client.js"></script><script src="/app/assets/js/main.js"></script><script src="charging-common.js"></script>
+<script>
+const {$,t,esc:e,fmt,local,message,run}=Charging,session=Charging.init(),draftTimes={};
+async function refresh(){
+  if(document.activeElement?.matches('[data-needed]'))return;
+  await Hub.render($('bookings'),API.get('/api/charging/my-status'),rows=>{
+    $('bookings').innerHTML=rows.length?rows.map(s=>{
+      const states=['queued','scheduled','charging','completed'],current=states.indexOf(s.status),info=s.priority_breakdown;
+      return `<article class="card charging-card"><h3>${e(s.vehicle_id)}</h3><span class="badge">${e(t('charging.status.'+s.status))}</span>
+      <div class="charging-ring" style="--progress:${s.battery_level}" role="progressbar" aria-label="${e(t('charging.battery'))}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${s.battery_level}"><span>${s.battery_level}%</span></div>
+      <ol class="charging-lifecycle">${states.map((state,i)=>`<li class="${i<=current?'active':''}">${e(t('charging.status.'+state))}</li>`).join('')}</ol>
+      ${s.battery_unconfirmed?`<p class="badge warn">${e(t('charging.unconfirmed'))}</p>`:''}${s.battery_data_outdated?`<p class="badge warn">${e(t('charging.outdated'))}</p>`:''}
+      <dl class="charging-review"><dt>${e(t('charging.point'))}</dt><dd>${e(s.point_id||'—')}</dd><dt>${e(t('charging.queue'))}</dt><dd>${s.queue_position||'—'}</dd>
+      <dt>${e(t('charging.priority'))}</dt><dd>${s.priority}</dd><dt>${e(t('charging.eta'))}</dt><dd>${e(fmt(s.estimated_completion))}</dd></dl>
+      <p class="muted">${e(t('charging.priorityExplanation'))}</p><p class="muted">${e(t('charging.lastUpdate'))}: ${e(fmt(s.battery_last_update))}</p>
+      ${s.status==='queued'?`<form data-edit="${e(s.session_id)}"><label>${e(t('charging.editNeed'))}<input data-needed="${e(s.session_id)}" type="datetime-local" value="${e(draftTimes[s.session_id]||local(s.needed_by||Date.now()+4*3600000))}" required></label>
+      <button type="submit" class="secondary">${e(t('charging.saveNeed'))}</button></form>`:''}
+      ${s.can_cancel?`<div class="charging-actions"><button class="secondary" type="button" data-cancel="${e(s.session_id)}">${e(t('charging.cancel'))}</button></div>`:''}</article>`;
+    }).join(''):`<p class="card">${e(t('charging.empty'))} <a href="charging-request.html">${e(t('charging.request'))}</a></p>`;
+    Charging.cancelButtons($('bookings'),refresh);
+    $('bookings').querySelectorAll('[data-edit]').forEach(form=>{
+      const input=form.querySelector('input');input.oninput=()=>draftTimes[form.dataset.edit]=input.value;
+      form.onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{
+        await API.patch('/api/charging/requests/'+encodeURIComponent(form.dataset.edit),{needed_by:new Date(input.value).toISOString()});
+        delete draftTimes[form.dataset.edit];input.blur();message(t('charging.saved'));await refresh();
+      });};
+    });
+  });
+  await Hub.render($('notifications'),API.get('/api/charging/notifications'),rows=>{
+    $('notifications').innerHTML=rows.slice(-5).reverse().map(n=>`<p class="card">${e(t('charging.notice.'+n.message))} · ${e(fmt(n.created_at))}</p>`).join('');
+  });
+}
+$('refresh').onclick=event=>run(event.currentTarget,refresh);
+if(session){refresh();Charging.live(refresh);}
+</script></body></html>

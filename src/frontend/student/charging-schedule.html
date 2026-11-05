@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark"><title data-i18n="charging.schedulePage">Book a slot</title>
+<script src="/shared/i18n.js"></script><link rel="stylesheet" href="/app/assets/css/style.css"><link rel="stylesheet" href="charging-common.css"></head>
+<body data-role="student"><nav id="nav"></nav><main>
+<header class="page-head"><h1 data-i18n="charging.slotGrid"></h1><p id="live-state" class="muted" data-i18n="charging.autoRefresh"></p></header>
+<nav id="charging-nav" class="charging-tabs" aria-label="Charging"></nav><div id="message" role="status" aria-live="polite"></div>
+<section class="card"><form id="filters"><div class="charging-fields">
+<label for="vehicle"><span data-i18n="charging.vehicle"></span><select id="vehicle" required></select></label>
+<label for="hub"><span data-i18n="charging.hub"></span><select id="hub" required></select></label>
+<label for="grid-start"><span data-i18n="charging.start"></span><input id="grid-start" type="datetime-local" required></label>
+<label for="needed"><span data-i18n="charging.neededBy"></span><input id="needed" type="datetime-local" required></label>
+<label for="target"><span data-i18n="charging.target"></span><input id="target" type="number" min="1" max="100" value="100" required></label></div>
+<div class="charging-actions"><button type="submit" data-i18n="charging.loadSlots"></button><button type="button" class="secondary" id="suggest" data-i18n="charging.suggest"></button></div></form></section>
+<section id="slots" class="card charging-scroll"></section><section id="choice" class="card" hidden></section>
+<section id="alternatives"></section><h2 data-i18n="charging.bookings"></h2><section id="bookings" class="grid"></section>
+</main><script src="/shared/api-client.js"></script><script src="/app/assets/js/main.js"></script><script src="charging-common.js"></script>
+<script>
+const {$,t,esc:e,fmt,local,message,run}=Charging,session=Charging.init();
+const draft={vehicle:'',hub:''};let selection=null,ready=false;
+$('grid-start').value=local(Date.now()+3600000);$('needed').value=local(Date.now()+4*3600000);
+function choose(slot){selection=slot;$('choice').hidden=false;drawChoice();}
+function drawChoice(){
+  if(!selection)return;const slot=selection;
+  $('choice').innerHTML=`<h3>${e(t('charging.selectedSlot'))}</h3><p>${e(slot.point_id)} · ${e(fmt(slot.start_time))} → ${e(fmt(slot.end_time))}</p>
+  <button type="button" id="reserve">${e(t('charging.reserve'))}</button>`;
+  $('reserve').onclick=event=>run(event.currentTarget,async()=>{
+    if(!$('filters').reportValidity()||!confirm(t('charging.confirmReservation')))return;
+    try{await API.post('/api/charging/reservations',{vehicle_id:$('vehicle').value,hub_id:slot.hub_id,point_id:slot.point_id,start_time:slot.start_time,end_time:slot.end_time,target_level:Number($('target').value)});}
+    catch(err){if(err.detail?.code==='slot_conflict'){message(err.message,true);showAlternatives(err.detail.alternatives);await loadSlots();return;}throw err;}
+    message(t('charging.saved'));selection=null;$('choice').hidden=true;await refresh();
+  });
+}
+function showAlternatives(items){
+  Hub.render($('alternatives'),Promise.resolve(items),rows=>{
+    $('alternatives').innerHTML=`<h2>${e(t('charging.alternatives'))}</h2><div class="grid">`+rows.map((row,i)=>`<article class="card"><b>${e(row.point_id)}</b>
+    <p>${e(I18n.hubName({hub_id:row.hub_id}))}<br>${e(fmt(row.start_time))}<br>${e(fmt(row.end_time))}</p>
+    <button type="button" data-alternative="${i}">${e(t('charging.chooseSuggestion'))}</button></article>`).join('')+'</div>';
+    $('alternatives').querySelectorAll('[data-alternative]').forEach(button=>button.onclick=()=>{
+      const row=rows[Number(button.dataset.alternative)];draft.hub=row.hub_id;$('hub').value=row.hub_id;$('grid-start').value=local(row.start_time);choose(row);loadSlots();
+    });
+    if(!rows.length)$('alternatives').textContent=t('charging.noSuggestion');
+  });
+}
+async function loadSlots(){
+  if(!ready)return;
+  const query=new URLSearchParams({start_time:new Date($('grid-start').value).toISOString(),slot_minutes:30,count:8});
+  await Hub.render($('slots'),API.get(`/api/charging/hubs/${encodeURIComponent(draft.hub)}/slots?${query}`),data=>{
+    $('slots').innerHTML=`<table><thead><tr><th>${e(t('charging.start'))}</th>`+data.point_ids.map(id=>`<th>${e(id.split('-').pop())}</th>`).join('')+'</tr></thead><tbody>'+
+      data.windows.map((w,i)=>`<tr><td>${e(new Date(w.start_time).toLocaleTimeString(I18n.lang,{hour:'2-digit',minute:'2-digit'}))}</td>`+
+        w.points.map(p=>`<td><button type="button" class="charging-slot ${p.available?'secondary':''}" data-slot="${i}" data-point="${e(p.point_id)}"${p.available?'':' disabled'}>
+        ${e(t(p.available?'charging.slotOpen':'charging.slotBusy'))}${p.outdated?' · '+e(t('charging.outdated')):''}</button></td>`).join('')+'</tr>').join('')+'</tbody></table>';
+    $('slots').querySelectorAll('[data-slot]:not(:disabled)').forEach(button=>button.onclick=()=>{
+      const w=data.windows[Number(button.dataset.slot)];choose({hub_id:data.hub_id,point_id:button.dataset.point,start_time:w.start_time,end_time:w.end_time});
+    });
+  });
+}
+async function refresh(){
+  await Promise.all([loadSlots(),Hub.render($('bookings'),API.get('/api/charging/my-status'),rows=>{
+    const bookings=rows.filter(row=>row.reservation_id);
+    $('bookings').innerHTML=bookings.length?bookings.map(s=>`<article class="card"><b>${e(s.vehicle_id)} · ${e(s.point_id||'—')}</b><p>${e(t('charging.status.'+s.status))}</p>
+      <p>${e(fmt(s.start_time))}<br>${e(fmt(s.end_time))}</p>${s.can_cancel?`<button class="secondary" type="button" data-cancel="${e(s.reservation_id)}">${e(t('charging.cancel'))}</button>`:''}</article>`).join(''):`<p>${e(t('charging.empty'))}</p>`;
+    Charging.cancelButtons($('bookings'),refresh);
+  })]);
+}
+$('filters').onsubmit=event=>{event.preventDefault();run(event.submitter,loadSlots);};
+$('hub').onchange=()=>{draft.hub=$('hub').value;selection=null;$('choice').hidden=true;run(null,loadSlots);};
+$('vehicle').onchange=()=>draft.vehicle=$('vehicle').value;
+$('suggest').onclick=event=>run(event.currentTarget,async()=>{
+  if(!$('filters').reportValidity())return;
+  const query=new URLSearchParams({vehicle_id:$('vehicle').value,needed_by:new Date($('needed').value).toISOString()});
+  let result=await API.get('/api/charging/suggestion?'+query);
+  if(result.status==='awaiting_decision'){if(!Charging.stale(result.outdated_items))return;query.set('continue_outdated','true');result=await API.get('/api/charging/suggestion?'+query);}
+  showAlternatives(result.suggestions);
+});
+document.addEventListener('langchange',drawChoice);
+if(session){
+  Hub.render($('vehicle'),API.get('/api/me/vehicles'),rows=>{
+    if(!rows.length){message(t('charging.noVehicles'));return;}
+    draft.vehicle=draft.vehicle||rows[0].vehicle_id;$('vehicle').innerHTML=rows.map(v=>`<option value="${e(v.vehicle_id)}">${e(v.model)} · ${v.battery_level}%</option>`).join('');$('vehicle').value=draft.vehicle;
+  });
+  Hub.render($('hub'),API.get('/api/hubs'),hubs=>{draft.hub=draft.hub||hubs[0].hub_id;$('hub').innerHTML=hubs.map(h=>`<option value="${e(h.hub_id)}">${e(I18n.hubName(h))}</option>`).join('');$('hub').value=draft.hub;ready=true;refresh();});
+  Charging.live(refresh);
+}
+</script></body></html>
