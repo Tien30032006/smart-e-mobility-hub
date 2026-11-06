@@ -1,19 +1,44 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title data-i18n="page.whatIf.title">What-if Simulation</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <!-- Include Chart.js for UC5 visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Page-specific styles */
+    .simulation-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    @media (min-width: 900px) {
+      .simulation-container {
+        grid-template-columns: 350px 1fr;
+      }
+    }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    .form-group select, .form-group input { width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+    .btn-run { width: 100%; padding: 0.75rem; background: var(--primary); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-export { background: #107c41; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; float: right;}
+    .results-section { display: none; }
+    .results-section.active { display: block; }
+    .impact-high { color: #d32f2f; font-weight: bold;}
+    .impact-medium { color: #f57c00; font-weight: bold;}
+    .impact-low { color: #388e3c; font-weight: bold;}
+    .chart-container { position: relative; height: 300px; width: 100%; margin-top: 1rem; margin-bottom: 2rem;}
+    .rec-card { border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 1rem; margin-bottom: 1rem; border-radius: 4px; background: var(--surface-alt); }
+    .rec-card.redistribute { border-left-color: #f57c00; }
+    .rec-card.reschedule { border-left-color: #d32f2f; }
+  </style>
 </head>
 <body data-role="operator">
-  <!-- OWNER: Member 4   USE CASES: UC1..UC7
-       TODO: Pick a template / enter scenario parameters, run the simulation, view per-Hub impact, recommendations, export a report.
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head">
@@ -24,16 +49,295 @@
         <span class="chip"><span><span data-i18n="common.useCases"></span>: UC1..UC7</span></span>
       </div>
     </header>
-    <div id="app" class="card"></div>
+
+    <div class="simulation-container">
+      
+      <!-- Left Column: Configuration (UC1, UC2) -->
+      <aside class="card">
+        <h2 data-i18n="whatif.selectTemplate">Select Scenario Template</h2>
+        <div class="form-group">
+          <select id="template-select">
+            <option value="" data-i18n="whatif.loadingTemplates">Loading templates...</option>
+          </select>
+        </div>
+
+        <hr style="margin: 1.5rem 0; border-top: 1px solid var(--border);">
+
+        <h2 data-i18n="whatif.customParams">Scenario Parameters</h2>
+        <form id="sim-form">
+          <input type="hidden" id="param-kind" value="demand_surge">
+          <div class="form-group">
+            <label for="param-hub" data-i18n="whatif.hubId">Target Hub</label>
+            <select id="param-hub" required></select>
+          </div>
+          <div class="form-group">
+            <label for="param-surge" data-i18n="whatif.surgeFactor">Demand Surge Factor</label>
+            <input type="number" id="param-surge" step="0.1" min="1.0" value="1.5">
+          </div>
+           <div class="form-group">
+            <label for="param-failed" data-i18n="whatif.failedPoints">Failed Charging Points</label>
+            <input type="number" id="param-failed" step="1" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label for="param-duration" data-i18n="whatif.duration">Duration (Minutes)</label>
+            <input type="number" id="param-duration" value="60" min="15" step="15" required>
+          </div>
+          
+          <button type="submit" id="btn-run" class="btn-run" data-i18n="whatif.runBtn">Run Simulation</button>
+          <div id="sim-status" class="muted" style="margin-top: 0.5rem; display: none;" data-i18n="whatif.running"></div>
+        </form>
+      </aside>
+
+      <!-- Right Column: Results (UC5, UC6, UC7) -->
+      <section id="results-view" class="card results-section">
+        <button id="btn-export" class="btn-export" data-i18n="whatif.exportBtn" style="display: none;">Export Excel</button>
+        <h2 data-i18n="whatif.results">Simulation Results</h2>
+        
+        <p style="font-size: 1.1rem;">
+          <span data-i18n="whatif.impactLevel">Overall Impact Level:</span> 
+          <span id="res-impact" class="impact-low">---</span>
+        </p>
+
+        <h3 style="margin-top: 2rem;" data-i18n="whatif.kpis">Hub KPIs</h3>
+        <div class="chart-container">
+          <canvas id="kpiChart"></canvas>
+        </div>
+
+        <h3 style="margin-top: 2rem;" data-i18n="whatif.recommendations">Rebalancing Recommendations</h3>
+        <div id="recs-container">
+          <!-- Recommendations injected here -->
+        </div>
+      </section>
+
+    </div>
   </main>
+
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
+    let currentResultId = null;
+    let kpiChart = null;
+    let availableTemplates = [];
+
+    // Initialize the Hub (sets up nav, etc.)
     Hub.init();
-    // TODO(Member 4): replace this placeholder with the real UI for UC1..UC7.
-    Hub.render(document.getElementById('app'), API.get('/api/simulation/templates'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
+
+    // 1. Load Data on Startup
+    async function initData() {
+      try {
+        // Load Hubs for the dropdown
+        const hubs = await API.get('/api/hubs');
+        const hubSelect = document.getElementById('param-hub');
+        hubSelect.innerHTML = '';
+        hubs.forEach(h => {
+          const opt = document.createElement('option');
+          opt.value = h.hub_id;
+          opt.textContent = I18n.hubName(h);
+          hubSelect.appendChild(opt);
+        });
+
+        // Load Templates (UC2)
+        availableTemplates = await API.get('/api/simulation/templates');
+        const tplSelect = document.getElementById('template-select');
+        tplSelect.innerHTML = '<option value="">-- Custom --</option>';
+        availableTemplates.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name;
+          tplSelect.appendChild(opt);
+        });
+
+        // Event listener for template selection
+        tplSelect.addEventListener('change', (e) => {
+          const selected = availableTemplates.find(t => t.id === e.target.value);
+          if (selected) {
+            document.getElementById('param-kind').value = selected.type;
+            if(selected.hub_id) document.getElementById('param-hub').value = selected.hub_id;
+            if(selected.surge_factor) document.getElementById('param-surge').value = selected.surge_factor;
+            if(selected.failed_points !== undefined) document.getElementById('param-failed').value = selected.failed_points;
+          }
+        });
+
+      } catch (err) {
+        console.error("Failed to load initial data:", err);
+      }
+    }
+
+    // 2. Handle Form Submission (UC1, UC3)
+    document.getElementById('sim-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const btn = document.getElementById('btn-run');
+      const status = document.getElementById('sim-status');
+      btn.disabled = true;
+      status.style.display = 'block';
+      document.getElementById('results-view').classList.remove('active');
+
+      try {
+        // Prepare scenario payload (UC1)
+        const payload = {
+          kind: document.getElementById('param-kind').value,
+          params: {
+            hub_id: document.getElementById('param-hub').value,
+            duration_minutes: parseInt(document.getElementById('param-duration').value, 10),
+            surge_factor: parseFloat(document.getElementById('param-surge').value),
+            failed_points: parseInt(document.getElementById('param-failed').value, 10)
+          },
+          description: "Manual run from UI"
+        };
+
+        const templateId = document.getElementById('template-select').value;
+        if (templateId) {
+          payload.template_id = templateId;
+        }
+
+        // Create Scenario
+        const scenario = await API.post('/api/simulation/scenarios', payload);
+        
+        // Run Simulation (UC3)
+        const result = await API.post(`/api/simulation/scenarios/${scenario.scenario_id}/run`);
+        currentResultId = result.result_id;
+
+        // Fetch Recommendations (UC6)
+        const recs = await API.get(`/api/simulation/results/${currentResultId}/recommendations`);
+
+        // Render Results
+        renderResults(result, recs);
+
+      } catch (err) {
+        alert(I18n.t('whatif.error') + (err.message || "Unknown error"));
+        if(err.todo) console.warn("Missing Backend Impl:", err.todo);
+      } finally {
+        btn.disabled = false;
+        status.style.display = 'none';
+      }
     });
+
+    // 3. Render Results (UC5, UC6)
+    function renderResults(result, recommendations) {
+      document.getElementById('results-view').classList.add('active');
+      document.getElementById('btn-export').style.display = 'inline-block';
+
+      // Impact Level
+      const impactEl = document.getElementById('res-impact');
+      impactEl.textContent = result.impact_level;
+      impactEl.className = 'impact-' + result.impact_level.toLowerCase();
+
+      // Render Chart (UC5)
+      renderChart(result.metrics);
+
+      // Render Recommendations (UC6)
+      const container = document.getElementById('recs-container');
+      container.innerHTML = '';
+
+      if (!recommendations || recommendations.length === 0) {
+        container.innerHTML = `<p class="muted">${I18n.t('whatif.noRecs')}</p>`;
+      } else {
+        recommendations.forEach(rec => {
+          const div = document.createElement('div');
+          div.className = `rec-card ${rec.type === 'redistribute' ? 'redistribute' : rec.type === 'reschedule_charging' ? 'reschedule' : ''}`;
+          
+          let titleKey = 'whatif.rec.' + rec.type;
+          let title = I18n.t(titleKey);
+          
+          let detailsHtml = '';
+          if (rec.type === 'redistribute' || rec.type === 'redirect_users') {
+             let moveText = I18n.t('whatif.rec.move', { from: I18n.hubName({id: rec.from_hub}), to: I18n.hubName({id: rec.to_hub}) });
+             detailsHtml = `<strong>${moveText}</strong><br>`;
+             if(rec.vehicle_ids) detailsHtml += `<small>Vehicles: ${rec.vehicle_ids.join(', ')}</small><br>`;
+          } else if (rec.type === 'reschedule_charging') {
+             detailsHtml = `<strong>Hub: ${I18n.hubName({id: rec.hub_id})}</strong><br><small>${rec.details}</small><br>`;
+          }
+
+          div.innerHTML = `
+            <h4 style="margin:0 0 0.5rem 0;">${title}</h4>
+            ${detailsHtml}
+            <p style="margin-top:0.5rem;" class="muted"><em>${I18n.t('whatif.rec.reason')} ${rec.reason}</em></p>
+          `;
+          container.appendChild(div);
+        });
+      }
+      
+      // Re-apply translations for dynamically generated HTML
+      I18n.apply(container);
+    }
+
+    // 4. Render Chart.js (UC5)
+    function renderChart(metrics) {
+      const ctx = document.getElementById('kpiChart').getContext('2d');
+      if (kpiChart) kpiChart.destroy();
+
+      const labels = Object.keys(metrics).map(id => I18n.hubName({id}));
+      const fulfillmentData = Object.values(metrics).map(m => m.fulfillment_rate_percent);
+      const utilizationData = Object.values(metrics).map(m => m.peak_utilization * 100);
+
+      kpiChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Fulfillment Rate (%)',
+              data: fulfillmentData,
+              backgroundColor: 'rgba(56, 142, 60, 0.7)',
+              borderColor: 'rgba(56, 142, 60, 1)',
+              borderWidth: 1
+            },
+            {
+              label: 'Peak Utilization (%)',
+              data: utilizationData,
+              backgroundColor: 'rgba(245, 124, 0, 0.7)',
+              borderColor: 'rgba(245, 124, 0, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, max: 100 }
+          },
+          plugins: {
+            title: { display: false }
+          }
+        }
+      });
+    }
+
+    // 5. Export Report (UC7)
+    document.getElementById('btn-export').addEventListener('click', () => {
+      if (!currentResultId) return;
+      const s = API.session();
+      const url = `/api/simulation/results/${currentResultId}/report?fmt=xlsx`;
+      
+      // We need to fetch and trigger download manually to pass the Auth token header
+      fetch(url, { headers: { 'Authorization': 'Bearer ' + (s ? s.token : '') } })
+      .then(res => {
+        if(!res.ok) throw new Error("Failed to download");
+        return res.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `WhatIf_Report_${currentResultId}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(err => alert("Export failed: " + err.message));
+    });
+
+    // Re-render chart text if language changes
+    document.addEventListener('langchange', () => {
+       // Optional: Re-fetch or re-render elements that depend purely on JS
+       initData(); 
+    });
+
+    // Run on load
+    initData();
   </script>
 </body>
 </html>
