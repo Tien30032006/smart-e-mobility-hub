@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark"><title data-i18n="charging.vehiclesPage">My vehicles</title>
+<script src="/shared/i18n.js"></script><link rel="stylesheet" href="/app/assets/css/style.css"><link rel="stylesheet" href="charging-common.css"></head>
+<body data-role="student"><nav id="nav"></nav><main>
+<header class="page-head"><h1 data-i18n="charging.registerVehicle"></h1><p class="muted" data-i18n="charging.registrationHint"></p></header>
+<nav id="charging-nav" class="charging-tabs" aria-label="Charging"></nav><div id="message" role="status" aria-live="polite"></div>
+<section class="card"><form id="register"><div class="charging-fields">
+<label for="model"><span data-i18n="charging.vehicleModel"></span><input id="model" maxlength="80" required></label>
+<label for="vehicle-type"><span data-i18n="charging.vehicleType"></span><select id="vehicle-type">
+<option value="e-bike" data-i18n="charging.e-bike"></option><option value="e-motorcycle" data-i18n="charging.e-motorcycle"></option><option value="e-scooter" data-i18n="charging.e-scooter"></option></select></label>
+<label for="battery"><span data-i18n="charging.initialBattery"></span><input id="battery" type="number" min="0" max="100" value="20" required></label>
+<label for="hub"><span data-i18n="charging.hub"></span><select id="hub" required></select></label></div>
+<div class="charging-actions"><button type="submit" data-i18n="charging.registerVehicle"></button></div></form></section>
+<h2 data-i18n="charging.vehiclesPage"></h2><section id="vehicles" class="grid"></section></main>
+<script src="/shared/api-client.js"></script><script src="/app/assets/js/main.js"></script><script src="charging-common.js"></script>
+<script>
+const {$,t,esc:e,fmt,message,run}=Charging,session=Charging.init();
+let selectedHub='';
+$('hub').onchange=()=>{selectedHub=$('hub').value;};
+async function refresh(){await Hub.render($('vehicles'),API.get('/api/me/vehicles'),rows=>{
+  $('vehicles').innerHTML=rows.length?rows.map(v=>`<article class="card charging-card"><h3>${e(v.model)}</h3><p>${e(t('charging.'+v.vehicle_type))} · ${v.battery_level}%</p>
+  <p>${e(I18n.hubName({hub_id:v.hub_id}))}</p><p class="muted">${e(t('charging.lastUpdate'))}: ${e(fmt(v.last_update))}</p>
+  ${v.outdated?`<span class="badge warn">${e(t('charging.unconfirmed'))}</span>`:''}</article>`).join(''):`<p class="card">${e(t('charging.noVehicles'))}</p>`;
+});}
+$('register').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{
+  await API.post('/api/me/vehicles',{model:$('model').value,vehicle_type:$('vehicle-type').value,battery_level:Number($('battery').value),hub_id:$('hub').value});
+  $('model').value='';message(t('charging.registered'));await refresh();
+});};
+if(session){Hub.render($('hub'),API.get('/api/hubs'),hubs=>{$('hub').innerHTML=hubs.map(h=>`<option value="${e(h.hub_id)}">${e(I18n.hubName(h))}</option>`).join('');if(selectedHub)$('hub').value=selectedHub;else selectedHub=$('hub').value;});refresh();}
+</script></body></html>

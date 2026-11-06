@@ -6,14 +6,76 @@
   <title data-i18n="page.trips.title">My Trips</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .trips-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .active-trip-card {
+      background: var(--surface);
+      border: 2px solid var(--brand);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+    .trip-live-timer {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--brand);
+      font-variant-numeric: tabular-nums;
+      margin: 8px 0;
+    }
+    .trip-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+      background: var(--bg);
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    .trip-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .history-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .dialog-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .dialog-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      padding: 24px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .invoice-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.95rem;
+    }
+  </style>
 </head>
 <body data-role="student">
-  <!-- OWNER: Member 1   USE CASES: U4, U5, U6, U7
-       TODO: List of reservations + active trip + history; cancel / return vehicle / report issue buttons.
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head">
@@ -24,16 +86,353 @@
         <span class="chip"><span><span data-i18n="common.useCases"></span>: U4, U5, U6, U7</span></span>
       </div>
     </header>
-    <div id="app" class="card"></div>
+
+    <div id="error-container"></div>
+    <div id="success-container"></div>
+
+    <div class="trips-container">
+      <!-- Active Ride Section -->
+      <div id="active-trip-section"></div>
+
+      <!-- Active Reservations Section -->
+      <div id="active-reservations-section"></div>
+
+      <!-- Past Trip History Section -->
+      <div class="history-card">
+        <h2 style="font-size:1.15rem; margin-top:0;" data-i18n="trip.historyTitle">Trip History</h2>
+        <div id="history-container">
+          <p class="muted" data-i18n="common.loading">Loading…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Return Vehicle Modal (U6) -->
+    <div id="return-modal" class="dialog-backdrop" style="display:none;">
+      <div class="dialog-box">
+        <h3 style="margin-top:0;" data-i18n="trip.returnBtn">End Trip & Return Vehicle</h3>
+        <p class="muted" style="font-size:0.85rem;">Dock vehicle into a vacant parking dock at your destination Hub.</p>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:6px;" data-i18n="trip.selectReturnHub">Select Return Hub</label>
+          <select id="sel-return-hub" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink);"></select>
+        </div>
+        <div id="return-modal-error" style="margin-bottom:12px;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="button secondary" id="btn-close-return" data-i18n="common.skip">Cancel</button>
+          <button type="button" class="button" id="btn-confirm-return" data-i18n="trip.confirmReturn">Confirm Dock & Return</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Modal (U6 receipt) -->
+    <div id="invoice-modal" class="dialog-backdrop" style="display:none;">
+      <div class="dialog-box">
+        <div style="text-align:center; margin-bottom:16px;">
+          <div style="font-size:2rem; color:var(--brand);">${Hub.icon('shield')}</div>
+          <h3 style="margin:4px 0 0 0;" data-i18n="trip.invoiceTitle">Trip Invoice & Receipt</h3>
+          <span class="badge" id="inv-trip-id">TRIP-001</span>
+        </div>
+        <div class="invoice-row">
+          <span class="muted" data-i18n="trip.durationLabel">Ride duration</span>
+          <b id="inv-duration">0 min</b>
+        </div>
+        <div class="invoice-row">
+          <span class="muted" data-i18n="trip.feeLabel">Rental fee charged</span>
+          <b id="inv-fee" style="color:var(--ink);">0 VND</b>
+        </div>
+        <div class="invoice-row">
+          <span class="muted" data-i18n="trip.refundLabel">Deposit refunded</span>
+          <b id="inv-refund" style="color:#10b981;">0 VND</b>
+        </div>
+        <div style="margin-top:20px;">
+          <button type="button" class="button" id="btn-close-invoice" style="width:100%;" data-i18n="trip.closeReceipt">Close Receipt</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Issue Modal (U7) -->
+    <div id="issue-modal" class="dialog-backdrop" style="display:none;">
+      <div class="dialog-box">
+        <h3 style="margin-top:0;" data-i18n="issue.title">Report Breakdown / Issue</h3>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="issue.target">Target Resource</label>
+          <input type="text" id="issue-target-id" readonly style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink);">
+          <input type="hidden" id="issue-target-type" value="vehicle">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="issue.category">Category</label>
+          <select id="issue-category" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink);">
+            <option value="brake_failure" data-i18n="issue.catBrake">Brake Failure</option>
+            <option value="battery_danger" data-i18n="issue.catBattery">Battery Danger / Overheating</option>
+            <option value="flat_tire" data-i18n="issue.catTire">Flat Tire</option>
+            <option value="dock_jam" data-i18n="issue.catDock">Smart Dock Jam</option>
+            <option value="other" data-i18n="issue.catOther">Other Issue</option>
+          </select>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="issue.desc">Description</label>
+          <textarea id="issue-desc" rows="3" style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink);"></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="button secondary" id="btn-close-issue" data-i18n="common.skip">Cancel</button>
+          <button type="button" class="button" id="btn-submit-issue" data-i18n="issue.submit">Submit Report</button>
+        </div>
+      </div>
+    </div>
   </main>
+
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
     Hub.init();
-    // TODO(Member 1): replace this placeholder with the real UI for U4, U5, U6, U7.
-    Hub.render(document.getElementById('app'), API.get('/api/reservation/my-trips'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+
+    let allHubs = [];
+    let tripsData = null;
+    let liveTimerInterval = null;
+
+    function showError(msg) {
+      const el = document.getElementById('error-container');
+      el.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;">${Hub.esc(msg)}</div>`;
+      setTimeout(() => { el.innerHTML = ''; }, 6000);
+    }
+
+    function showSuccess(msg) {
+      const el = document.getElementById('success-container');
+      el.innerHTML = `<div class="card" style="background:#ecfdf5; color:#065f46; border-color:#a7f3d0; margin-bottom:16px;">${Hub.esc(msg)}</div>`;
+      setTimeout(() => { el.innerHTML = ''; }, 6000);
+    }
+
+    async function loadData() {
+      try {
+        allHubs = await API.get('/api/hubs');
+        tripsData = await API.get('/api/reservation/my-trips');
+        renderActiveTrip(tripsData.active_trip);
+        renderActiveReservations(tripsData.reservations);
+        renderHistory(tripsData.history);
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function renderActiveTrip(trip) {
+      const container = document.getElementById('active-trip-section');
+      if (liveTimerInterval) clearInterval(liveTimerInterval);
+
+      if (!trip) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const hubObj = allHubs.find(h => h.hub_id === trip.from_hub);
+      const hubName = hubObj ? I18n.hubName(hubObj) : trip.from_hub;
+
+      container.innerHTML = `
+        <div class="active-trip-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:var(--brand); color:white;">ACTIVE RIDE</span>
+              <h2 style="margin:0; font-size:1.25rem;">${Hub.esc(trip.vehicle_model || trip.vehicle_id)}</h2>
+            </div>
+            <span class="chip"><span>ID: ${Hub.esc(trip.vehicle_id)}</span></span>
+          </div>
+
+          <div class="trip-meta-grid">
+            <div>
+              <span class="muted" style="font-size:0.8rem;">${Hub.esc(Hub.t('trip.rideTime'))}</span>
+              <div class="trip-live-timer" id="live-trip-timer">00:00</div>
+            </div>
+            <div>
+              <span class="muted" style="font-size:0.8rem;">${Hub.esc(Hub.t('trip.from'))}</span>
+              <div style="font-weight:600; font-size:1.05rem; margin-top:6px;">${Hub.esc(hubName)}</div>
+            </div>
+            <div>
+              <span class="muted" style="font-size:0.8rem;">Security Deposit Held</span>
+              <div style="font-weight:600; font-size:1.05rem; margin-top:6px; color:#10b981;">50,000 VND</div>
+            </div>
+          </div>
+
+          <div class="trip-actions">
+            <button id="btn-open-return" class="button">
+              ${Hub.icon('shield')} ${Hub.esc(Hub.t('trip.returnBtn'))}
+            </button>
+            <button id="btn-open-issue" class="button secondary">
+              ${Hub.icon('alert')} ${Hub.esc(Hub.t('trip.reportBtn'))}
+            </button>
+          </div>
+        </div>
+      `;
+
+      const startTime = new Date(trip.start_time).getTime();
+      function updateLiveTimer() {
+        const now = Date.now();
+        const elapsedSecs = Math.max(0, Math.floor((now - startTime) / 1000));
+        const hrs = Math.floor(elapsedSecs / 3600);
+        const mins = Math.floor((elapsedSecs % 3600) / 60);
+        const secs = elapsedSecs % 60;
+        const formatted = hrs > 0
+          ? `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`
+          : `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+        const el = document.getElementById('live-trip-timer');
+        if (el) el.textContent = formatted;
+      }
+      updateLiveTimer();
+      liveTimerInterval = setInterval(updateLiveTimer, 1000);
+
+      document.getElementById('btn-open-return').onclick = () => {
+        const sel = document.getElementById('sel-return-hub');
+        sel.innerHTML = allHubs.map(h => `<option value="${h.hub_id}">${Hub.esc(I18n.hubName(h))} (${h.free_spaces} free)</option>`).join('');
+        document.getElementById('return-modal-error').innerHTML = '';
+        document.getElementById('return-modal').style.display = 'flex';
+      };
+
+      document.getElementById('btn-open-issue').onclick = () => {
+        document.getElementById('issue-target-id').value = trip.vehicle_id;
+        document.getElementById('issue-modal').style.display = 'flex';
+      };
+    }
+
+    function renderActiveReservations(reservations) {
+      const container = document.getElementById('active-reservations-section');
+      const activeList = (reservations || []).filter(r => r.status === 'confirmed');
+
+      if (!activeList.length) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="card" style="margin-bottom:24px;">
+          <h3 style="margin-top:0;" data-i18n="trip.activeReservations">Active Reservations</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${activeList.map(r => {
+              const hubObj = allHubs.find(h => h.hub_id === r.hub_id);
+              const hubName = hubObj ? I18n.hubName(hubObj) : r.hub_id;
+              return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); flex-wrap:wrap; gap:8px;">
+                  <div>
+                    <b>${Hub.esc(r.kind.toUpperCase())}: ${Hub.esc(r.resource_id)}</b> · <span>${Hub.esc(hubName)}</span>
+                    <div style="font-size:0.8rem; color:var(--muted);">Expires at: ${new Date(r.end_time).toLocaleTimeString()}</div>
+                  </div>
+                  <div style="display:flex; gap:8px;">
+                    <a href="/app/student/reserve-vehicle.html" class="button" style="text-decoration:none; font-size:0.85rem;">View Pass</a>
+                    <button class="button secondary btn-cancel-res" data-id="${r.reservation_id}" style="font-size:0.85rem;">Cancel</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+
+      container.querySelectorAll('.btn-cancel-res').forEach(btn => {
+        btn.onclick = async () => {
+          if (!confirm(Hub.t('reserve.cancelConfirm'))) return;
+          try {
+            await API.post(`/api/reservation/reservations/${btn.dataset.id}/cancel`, {});
+            await loadData();
+          } catch (e) {
+            showError(e.message);
+          }
+        };
+      });
+    }
+
+    function renderHistory(history) {
+      const container = document.getElementById('history-container');
+      if (!history || !history.length) {
+        container.innerHTML = `<p class="muted">${Hub.esc(Hub.t('trip.noHistory'))}</p>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Vehicle</th>
+                <th>From Hub</th>
+                <th>To Hub</th>
+                <th>Duration</th>
+                <th>Rental Fee</th>
+                <th>Deposit Refunded</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${history.map(t => `
+                <tr>
+                  <td>${new Date(t.end_time || t.start_time).toLocaleString(I18n.lang)}</td>
+                  <td><b>${Hub.esc(t.vehicle_id)}</b></td>
+                  <td>${Hub.esc(t.from_hub || '–')}</td>
+                  <td>${Hub.esc(t.to_hub || '–')}</td>
+                  <td>${t.duration_minutes} min</td>
+                  <td style="font-weight:600;">${(t.rental_fee || 0).toLocaleString()} VND</td>
+                  <td style="color:#10b981;">${(t.refund_amount || 0).toLocaleString()} VND</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // Modal Events
+    document.getElementById('btn-close-return').onclick = () => {
+      document.getElementById('return-modal').style.display = 'none';
+    };
+
+    document.getElementById('btn-confirm-return').onclick = async () => {
+      const returnHub = document.getElementById('sel-return-hub').value;
+      if (!tripsData || !tripsData.active_trip) return;
+
+      try {
+        const receipt = await API.post('/api/reservation/return', {
+          trip_id: tripsData.active_trip.trip_id,
+          hub_id: returnHub
+        });
+        document.getElementById('return-modal').style.display = 'none';
+
+        // Show Invoice modal
+        document.getElementById('inv-trip-id').textContent = receipt.trip_id;
+        document.getElementById('inv-duration').textContent = `${receipt.duration_minutes} min`;
+        document.getElementById('inv-fee').textContent = `${receipt.rental_fee.toLocaleString()} VND`;
+        document.getElementById('inv-refund').textContent = `${receipt.deposit_refunded.toLocaleString()} VND`;
+        document.getElementById('invoice-modal').style.display = 'flex';
+      } catch (err) {
+        document.getElementById('return-modal-error').innerHTML = `<div class="error" role="alert">${Hub.esc(err.message)}</div>`;
+      }
+    };
+
+    document.getElementById('btn-close-invoice').onclick = () => {
+      document.getElementById('invoice-modal').style.display = 'none';
+      loadData();
+    };
+
+    document.getElementById('btn-close-issue').onclick = () => {
+      document.getElementById('issue-modal').style.display = 'none';
+    };
+
+    document.getElementById('btn-submit-issue').onclick = async () => {
+      const targetId = document.getElementById('issue-target-id').value;
+      const targetType = document.getElementById('issue-target-type').value;
+      const category = document.getElementById('issue-category').value;
+      const desc = document.getElementById('issue-desc').value;
+
+      try {
+        const res = await API.post('/api/reservation/issues', {
+          target_type: targetType,
+          target_id: targetId,
+          category: category,
+          description: desc,
+          photo_urls: []
+        });
+        document.getElementById('issue-modal').style.display = 'none';
+        showSuccess(Hub.t('issue.success') + res.issue_id);
+      } catch (err) {
+        showError(err.message);
+      }
+    };
+
+    loadData();
   </script>
 </body>
 </html>

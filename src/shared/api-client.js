@@ -27,7 +27,9 @@ const API = (() => {
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
     if (!res.ok) {
-      const err = new Error((data && data.detail) || res.statusText);
+      const detail = data && data.detail;
+      const err = new Error(typeof detail === 'string' ? detail : (detail && detail.message) || res.statusText);
+      err.detail = detail;   // Structured business errors (e.g. confirm outdated data).
       err.status = res.status;
       err.todo = res.status === 501 ? data : null;   // {owner, use_case, hint}
       throw err;
