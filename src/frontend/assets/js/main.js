@@ -8,14 +8,15 @@
 const Hub = (() => {
   const t = (k, v) => I18n.t(k, v);
 
+  /* [file, i18n key, icon, short tab label key] */
   const MENU = {
     student: [
-      ['find-hub.html', 'menu.findHub'], ['reserve-vehicle.html', 'menu.reserve'],
-      ['my-trips.html', 'menu.trips'], ['charging-request.html', 'menu.charging'],
+      ['find-hub.html', 'menu.findHub', 'map', 'tab.discover'], ['reserve-vehicle.html', 'menu.reserve', 'parking', 'tab.reserve'],
+      ['my-trips.html', 'menu.trips', 'bike', 'tab.trips'], ['charging-request.html', 'menu.charging', 'zap', 'tab.charge'],
     ],
     operator: [
-      ['dashboard.html', 'menu.dashboard'], ['incidents.html', 'menu.incidents'],
-      ['charging.html', 'menu.stations'], ['what-if.html', 'menu.whatIf'],
+      ['dashboard.html', 'menu.dashboard', 'grid'], ['incidents.html', 'menu.incidents', 'bell'],
+      ['charging.html', 'menu.stations', 'plug'], ['what-if.html', 'menu.whatIf', 'sliders'],
     ],
   };
 
@@ -31,6 +32,16 @@ const Hub = (() => {
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
     construction: '<path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/>',
     alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v5M12 16h.01"/>',
+    map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>',
+    pin: '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    chevron: '<path d="m9 6 6 6-6 6"/>',
+    locate: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/>',
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    sliders: '<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+    refresh: '<path d="M21 12a9 9 0 0 1-15.5 6.2M3 12A9 9 0 0 1 18.5 5.8M18 2v4h-4M6 22v-4h4"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   };
   function icon(name, cls) {
@@ -44,27 +55,40 @@ const Hub = (() => {
     const nav = document.getElementById('nav');
     if (!nav) return;
     const s = API.session();
+    const role = s ? s.role : null;
+    document.body.classList.toggle('shell-student', role === 'student');
+    document.body.classList.toggle('shell-operator', role === 'operator');
     const items = s ? (MENU[s.role] || []) : [];
     const base = s ? '/app/' + s.role + '/' : '/app/';
     const here = location.pathname.split('/').pop();
     const dark = I18n.theme === 'dark';
+    const sub = role ? `<small>${esc(t('role.' + role))}</small>` : '';
     nav.setAttribute('aria-label', t('common.mainNav'));
     nav.innerHTML =
-      `<a class="brand" href="/app/index.html"><span class="logo">${icon('zap')}</span><span>${esc(t('app.name'))}</span></a>` +
-      `<div class="links">${items.map(([f, k]) =>
-        `<a href="${base}${f}"${f === here ? ' aria-current="page"' : ''}>${esc(t(k))}</a>`).join('')}</div>` +
+      `<a class="brand" href="/app/index.html"><span class="logo">${icon('zap')}</span><span class="t"><span>${esc(t('app.name'))}</span>${sub}</span></a>` +
+      `<div class="links">${items.map(([f, k, ic]) =>
+        `<a href="${base}${f}"${f === here ? ' aria-current="page"' : ''}>${role === 'operator' ? icon(ic) : ''}${esc(t(k))}</a>`).join('')}</div>` +
       `<div class="tools">` +
         `<div class="seg" role="group" aria-label="${esc(t('common.language'))}">` +
           I18n.SUPPORTED.map(l => `<button type="button" data-lang="${l}" aria-pressed="${I18n.lang === l}" lang="${l}">${l.toUpperCase()}</button>`).join('') +
         `</div>` +
         `<button type="button" class="icon-btn" id="theme-toggle" aria-label="${esc(t(dark ? 'common.themeLight' : 'common.themeDark'))}">${icon(dark ? 'sun' : 'moon')}</button>` +
-        (s ? `<span class="who"><span class="name"><b>${esc(s.full_name)}</b> · ${esc(t('role.' + s.role))}</span>` +
+        (s ? `<span class="who"><span class="name"><b>${esc(s.full_name)}</b><br>${esc(t('role.' + s.role))}</span>` +
              `<button type="button" class="icon-btn" id="logout" aria-label="${esc(t('common.logout'))}" title="${esc(t('common.logout'))}">${icon('logout')}</button></span>` : '') +
       `</div>`;
     nav.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => I18n.setLang(b.dataset.lang));
     nav.querySelector('#theme-toggle').onclick = () => I18n.setTheme(I18n.theme === 'dark' ? 'light' : 'dark');
     const lo = nav.querySelector('#logout');
     if (lo) lo.onclick = () => { API.logout(); location.href = '/app/index.html'; };
+
+    /* Student: bottom tab bar (thumb reach), separate landmark from the top bar. */
+    let tb = document.getElementById('tabbar');
+    if (role === 'student') {
+      if (!tb) { tb = document.createElement('nav'); tb.id = 'tabbar'; tb.className = 'tabbar'; document.body.appendChild(tb); }
+      tb.setAttribute('aria-label', t('common.mainNav'));
+      tb.innerHTML = items.map(([f, k, ic, sk]) =>
+        `<a href="${base}${f}"${f === here ? ' aria-current="page"' : ''}>${icon(ic)}<span>${esc(t(sk))}</span></a>`).join('');
+    } else if (tb) tb.remove();
   }
 
   /* ---------- Render API results (loading / data / 501 / error), re-drawn on language change ---------- */
@@ -116,5 +140,23 @@ const Hub = (() => {
   });
   document.addEventListener('themechange', drawNav);
 
-  return { init, render, esc, icon, t };
+  /* Count-up for KPI numbers (one orchestrated moment on load; skipped for reduced motion). */
+  function countUp(el, to) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !isFinite(to)) { el.textContent = to; return; }
+    const t0 = performance.now(), dur = 700;
+    const step = now => { const p = Math.min(1, (now - t0) / dur); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  /* Stock tone shared by student map/list and operator console: '' | 'warn' | 'bad'. */
+  function tone(h) { return h.free_spaces === 0 ? 'bad' : (h.vehicles_available <= 2 ? 'warn' : ''); }
+  const SLOTS = [[27, 29], [73, 36], [52, 60], [27, 80], [76, 86], [52, 24]];   // schematic pin positions (% of map)
+  function mapHtml(hubs, labelFn, selected) {
+    return '<div class="cmap" role="group" aria-label="' + esc(t('page.findHub.mapNote')) + '">' +
+      '<i class="block" style="left:8%;top:54%;width:26%;height:16%"></i><i class="block" style="left:56%;top:8%;width:20%;height:24%"></i><i class="block" style="left:62%;top:66%;width:28%;height:14%"></i>' +
+      '<i class="route" style="left:27%;top:29%;width:21%;height:51%"></i>' +
+      hubs.map((h, i) => { const [x, y] = SLOTS[i % SLOTS.length]; const tn = tone(h);
+        return `<button type="button" class="pin ${tn}" data-hub="${esc(h.hub_id)}" aria-pressed="${selected === h.hub_id}" style="left:${x}%;top:${y}%"><span class="tag"><b>${esc(I18n.hubName(h))}</b><span>${labelFn(h)}</span></span><span class="dot"></span></button>`; }).join('') +
+      '<span class="note">' + esc(t('page.findHub.mapNote')) + '</span></div>';
+  }
+  return { init, render, esc, icon, t, countUp, tone, mapHtml };
 })();
