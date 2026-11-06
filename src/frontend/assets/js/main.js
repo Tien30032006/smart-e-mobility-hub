@@ -12,6 +12,7 @@ const Hub = (() => {
     student: [
       ['find-hub.html', 'menu.findHub'], ['reserve-vehicle.html', 'menu.reserve'],
       ['my-trips.html', 'menu.trips'], ['charging-request.html', 'menu.charging'],
+      ['wallet.html', 'menu.wallet'],
     ],
     operator: [
       ['dashboard.html', 'menu.dashboard'], ['incidents.html', 'menu.incidents'],

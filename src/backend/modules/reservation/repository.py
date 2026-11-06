@@ -31,3 +31,19 @@ def list_active(hub_id: Optional[str] = None) -> List[Reservation]:
     live = (ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.ACTIVE)
     return [r for r in network.reservations.values()
             if r.status in live and (hub_id is None or r.hub_id == hub_id)]
+
+
+def get_active_by_user(user_id: str, kind: Optional[ReservationKind] = None) -> Optional[Reservation]:
+    live = (ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.ACTIVE)
+    for r in network.reservations.values():
+        if r.user_id == user_id and r.status in live and (kind is None or r.kind == kind):
+            return r
+    return None
+
+
+def get_active_by_resource(resource_id: str) -> Optional[Reservation]:
+    live = (ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.ACTIVE)
+    for r in network.reservations.values():
+        if r.resource_id == resource_id and r.status in live:
+            return r
+    return None
