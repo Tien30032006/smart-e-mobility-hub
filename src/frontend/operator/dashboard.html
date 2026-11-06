@@ -3,37 +3,68 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title data-i18n="page.dashboard.title">Network Dashboard</title>
+  <title data-i18n="ops.title">Network monitoring</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
 </head>
 <body data-role="operator">
-  <!-- OWNER: Member 3   USE CASES: UC01, UC02, UC03, UC-OP04
-       TODO: Network-wide KPIs, Hub table (utilization), map markers, alerts, redistribution proposals + relocation order creation.
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
+  <!-- OWNER: Member 4 (UC01)  UI v2: desktop console. Currently aggregates /api/hubs;
+       TODO(Member 4): switch to GET /api/operations/dashboard when implemented. -->
   <nav id="nav"></nav>
   <main>
-    <header class="page-head">
-      <h1 data-i18n="page.dashboard.title">Network Dashboard</h1>
-      <p class="muted" data-i18n="page.dashboard.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 3</span></span>
-        <span class="chip"><span><span data-i18n="common.useCases"></span>: UC01, UC02, UC03, UC-OP04</span></span>
-      </div>
+    <header class="page-head pagebar">
+      <div><h1 data-i18n="ops.title"></h1><p class="muted" id="sub"></p></div>
+      <button type="button" class="secondary" id="refresh"></button>
     </header>
-    <div id="app" class="card"></div>
+    <div id="app"></div>
   </main>
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
     Hub.init();
-    // TODO(Member 3): replace this placeholder with the real UI for UC01, UC02, UC03, UC-OP04.
-    Hub.render(document.getElementById('app'), API.get('/api/operator/dashboard'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+    let hubs = [], sel = null, stamp = new Date();
+    const E = Hub.esc, T = (k, v) => E(Hub.t(k, v));
+    const status = h => h.free_spaces === 0 || h.near_capacity ? ['bad', 'ops.statusBusy'] : h.vehicles_available <= 2 ? ['warn', 'ops.statusLow'] : ['', 'ops.statusOk'];
+
+    function draw() {
+      document.getElementById('sub').textContent = Hub.t('ops.sub') + ' · ' + Hub.t('ops.updated', { t: stamp.toLocaleTimeString(I18n.lang) });
+      const sum = f => hubs.reduce((a, h) => a + f(h), 0);
+      const k = [['ops.kpiVehicles', sum(h => h.vehicles_available)], ['ops.kpiCharging', sum(h => h.charging_points_total - h.charging_points_free)],
+                 ['ops.kpiSpaces', sum(h => h.free_spaces)], ['ops.kpiHubs', hubs.length]];
+      const cur = hubs.find(h => h.hub_id === sel) || hubs[0];
+      const att = hubs.filter(h => status(h)[0]);
+      document.getElementById('app').innerHTML =
+        `<section class="kpis">${k.map(([l, n]) => `<article class="card kpi"><div class="n" data-n="${n}">0</div><div class="l">${T(l)}</div></article>`).join('')}</section>
+        <div class="console">
+          <section class="card"><h2 style="margin:0">${T('ops.map')}</h2><p class="muted" style="margin:2px 0 14px">${T('ops.mapHint')}</p>
+            ${Hub.mapHtml(hubs, h => E(Hub.t('hub.vehShort', { n: h.vehicles_available }) + ' · ' + Hub.t('hub.spacesShort', { n: h.free_spaces })), cur && cur.hub_id)}
+            <div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span></div></section>
+          <aside class="card detail">${cur ? (() => { const p = Math.round(cur.utilization * 100), [tn, sk] = status(cur); return `
+            <div class="pagebar"><h2 style="margin:0">${E(I18n.hubName(cur))}</h2><span class="badge ${tn}">${T(sk)}</span></div>
+            <div class="big"><div><div class="n">${cur.vehicles_available}</div><span class="muted">${T('ops.col.vehicles')}</span></div>
+              <div><div class="n">${cur.free_spaces}</div><span class="muted">${T('ops.kpiSpaces')}</span></div></div>
+            <div class="bar ${cur.near_capacity ? 'hot' : ''}" role="progressbar" aria-label="${T('hub.utilization')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><i style="width:${p}%"></i></div>
+            <p class="muted" style="margin:8px 0 0">${p}${T('hub.full')} · ${T('hub.freePorts', { n: cur.charging_points_free })}</p>
+            <h3 style="margin:20px 0 8px;font-size:16px">${T('ops.attention')}</h3>
+            ${att.length ? att.map(h => `<p style="margin:6px 0;display:flex;justify-content:space-between;gap:8px">${E(I18n.hubName(h))}<span class="badge ${status(h)[0]}">${T(status(h)[1])}</span></p>`).join('') : `<p class="muted">${T('ops.allGood')}</p>`}`; })() : ''}</aside>
+        </div>
+        <h2>${T('ops.table')}</h2>
+        <div class="tablewrap"><table><thead><tr><th>${T('ops.col.hub')}</th><th>${T('ops.col.vehicles')}</th><th>${T('ops.col.parking')}</th><th>${T('ops.col.ports')}</th><th>${T('ops.col.status')}</th></tr></thead><tbody>
+          ${hubs.map(h => { const p = Math.round(h.utilization * 100), [tn, sk] = status(h);
+            return `<tr data-hub="${E(h.hub_id)}" class="${cur && cur.hub_id === h.hub_id ? 'sel' : ''}"><td><b>${E(I18n.hubName(h))}</b></td><td>${h.vehicles_available}</td>
+              <td>${h.capacity - h.free_spaces} / ${h.capacity} · ${p}%<span class="mini"><i style="width:${p}%"></i></span></td>
+              <td>${h.charging_points_total - h.charging_points_free} / ${h.charging_points_total}</td><td><span class="badge ${tn}">${T(sk)}</span></td></tr>`; }).join('')}
+        </tbody></table></div>`;
+      const root = document.getElementById('app');
+      root.querySelectorAll('.kpi .n').forEach(n => Hub.countUp(n, +n.dataset.n));
+      root.querySelectorAll('.pin, tbody tr').forEach(e => e.onclick = () => { sel = e.dataset.hub; draw(); });
+      document.getElementById('refresh').innerHTML = Hub.icon('refresh') + T('ops.refresh');
+    }
+    async function load() { hubs = await API.get('/api/hubs'); stamp = new Date(); draw(); }
+    document.getElementById('refresh').onclick = () => load().catch(() => {});
+    document.addEventListener('langchange', () => hubs.length && draw());
+    Hub.render(document.getElementById('app'), API.get('/api/hubs'), d => { hubs = d; stamp = new Date(); draw(); });
+    setInterval(() => load().catch(() => {}), 30000);   // mockup: refresh every 30 s
   </script>
 </body>
 </html>

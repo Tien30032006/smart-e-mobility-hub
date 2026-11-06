@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title data-i18n="page.findHub.title">Find Hub & Vehicle</title>
   <script src="/shared/i18n.js"></script>
@@ -177,305 +177,57 @@
   </style>
 </head>
 <body data-role="student">
+  <!-- OWNER: Member 1   USE CASE: U1  (UI v2: mobile-first discover screen; data from /api/hubs.
+       TODO(Member 1): add vehicle-type / min-battery filters and link rows to reserve-vehicle.html?hub=<id>.) -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head">
-      <h1 data-i18n="page.findHub.title">Find Hub & Vehicle</h1>
-      <p class="muted" data-i18n="page.findHub.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 1</span></span>
-        <span class="chip"><span><span data-i18n="common.useCase"></span>: U1</span></span>
-      </div>
+      <h1 id="greet"></h1>
+      <p class="muted" data-i18n="page.findHub.sub"></p>
     </header>
-
-    <!-- Filters Bar -->
-    <div class="filter-bar">
-      <div class="filter-group">
-        <label data-i18n="filter.fromHub">Departure Hub</label>
-        <select id="sel-from-hub">
-          <option value="" data-i18n="filter.allHubs">All Hubs</option>
-          <option value="HUB-METRO">VNU Metro Station</option>
-          <option value="HUB-KTX">Dormitory Zone A</option>
-          <option value="HUB-CAMPUS">University Campus</option>
-          <option value="HUB-LIB">Central Library</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label data-i18n="filter.allTypes">Vehicle Type</label>
-        <select id="sel-vtype">
-          <option value="" data-i18n="filter.allTypes">All vehicle types</option>
-          <option value="e-bike" data-i18n="filter.bike">E-Bike</option>
-          <option value="e-scooter" data-i18n="filter.scooter">E-Scooter</option>
-          <option value="e-motorcycle" data-i18n="filter.motorcycle">E-Motorcycle</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label data-i18n="filter.minBattery">Min Battery (%)</label>
-        <select id="sel-battery">
-          <option value="0">Any (>= 0%)</option>
-          <option value="30">>= 30%</option>
-          <option value="50">>= 50%</option>
-          <option value="80">>= 80%</option>
-        </select>
-      </div>
-      <div style="display:flex; gap:8px; align-self: flex-end;">
-        <button id="btn-filter" class="button" data-i18n="filter.apply">Filter</button>
-        <button id="btn-reset" class="button secondary" data-i18n="filter.reset">Reset</button>
-      </div>
+    <label class="field-label" for="q" data-i18n="page.findHub.dest"></label>
+    <div class="search"><input id="q" type="search" autocomplete="off" data-i18n-attr="placeholder:page.findHub.search"><span id="qi"></span></div>
+    <div class="seg full" role="group" id="mode" style="margin-top:16px">
+      <button type="button" data-m="shared" aria-pressed="true" data-i18n="page.findHub.shared"></button>
+      <button type="button" data-m="personal" aria-pressed="false" data-i18n="page.findHub.personal"></button>
     </div>
-
-    <!-- Leaflet OpenStreetMap Interactive Map Section -->
-    <div class="map-container-wrap">
-      <div id="geo-notice" class="map-notice-banner" style="display:none;">
-        <span id="geo-notice-text">Location notice</span>
-        <button type="button" class="button secondary" id="btn-dismiss-notice" style="padding:4px 8px; font-size:0.75rem;">OK</button>
-      </div>
-      <div class="map-overlay-controls">
-        <button type="button" class="button secondary" id="btn-my-loc" style="background:var(--surface); box-shadow:0 2px 8px rgba(0,0,0,0.15);" title="Locate Me">
-          ${Hub.icon('user')} Find Me
-        </button>
-      </div>
-      <div id="leaflet-map"></div>
-    </div>
-
-    <!-- Main Content Container for Hubs -->
-    <div id="app"></div>
+    <div id="app" style="margin-top:16px"></div>
   </main>
 
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
-    Hub.init();
+    const s = Hub.init();
+    let mode = 'shared', query = '', hubs = [], selected = null;
+    const first = s ? s.full_name.trim().split(/\s+/).pop() : '';
+    const T = (k, n) => Hub.esc(Hub.t(k, { n }));
+    const stat = h => mode === 'shared' ? Hub.t('hub.vehShort', { n: h.vehicles_available }) + ' · ' + Hub.t('hub.spacesShort', { n: h.free_spaces })
+                                         : Hub.t('hub.spacesShort', { n: h.free_spaces }) + ' · ' + Hub.t('hub.freePorts', { n: h.charging_points_free });
 
-    let leafletMap = null;
-    let mapMarkers = [];
-    let userLocMarker = null;
-    let currentUserCoord = null;
-    let currentHubs = [];
-    let currentFilters = { from_hub: '', vehicle_type: '', min_battery: 0 };
-
-    function initLeaflet() {
-      if (leafletMap || typeof L === 'undefined') return;
-
-      leafletMap = HubMap.initMap('leaflet-map', {
-        onTileError: () => {
-          showNotice('Map rendering unavailable. Displaying cached Hub metrics.');
-        }
-      });
-
-      // Try GPS Geolocation (Step 1 of U1)
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            currentUserCoord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            if (leafletMap) {
-              userLocMarker = HubMap.userMarker(leafletMap, currentUserCoord.lat, currentUserCoord.lng);
-            }
-          },
-          err => {
-            // Flow ngoại lệ 1: Location denied -> default viewpoint to Metro Station / Central Hub
-            showNotice('Location permission denied. Viewpoint centered at Central Hub. Pick a Hub manually below.');
-            currentUserCoord = { lat: 10.8790, lng: 106.8060 }; // HUB-METRO
-          },
-          { timeout: 5000 }
-        );
-      }
+    function draw() {
+      document.getElementById('greet').textContent = Hub.t('page.findHub.greet', { name: first });
+      document.getElementById('qi').innerHTML = Hub.icon('search');
+      const list = hubs.filter(h => I18n.hubName(h).toLowerCase().includes(query.toLowerCase()))
+                       .sort((a, b) => b.vehicles_available - a.vehicles_available);
+      const el = document.getElementById('app');
+      el.innerHTML = Hub.mapHtml(hubs, h => Hub.esc(stat(h)), selected) +
+        `<div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span></div>` +
+        `<div class="section-title"><h2>${T('page.findHub.near')}</h2></div>` +
+        (list.length ? list.map(h => { const tn = Hub.tone(h);
+          return `<a class="card hubrow ${tn}" href="/app/student/reserve-vehicle.html?hub=${encodeURIComponent(h.hub_id)}" ${selected === h.hub_id ? 'aria-current="true"' : ''}>
+            <span class="pinico">${Hub.icon('pin')}</span>
+            <span class="grow"><b>${Hub.esc(I18n.hubName(h))}</b>
+              <span class="meta">${Hub.esc(Hub.t('hub.freeSpaces', { n: h.free_spaces }))} · ${Math.round(h.utilization * 100)}${Hub.esc(Hub.t('hub.full'))}</span><br>
+              <span class="ok">${Hub.esc(mode === 'shared' ? Hub.t('hub.ready', { n: h.vehicles_available }) : Hub.t('hub.freePorts', { n: h.charging_points_free }))}</span></span>
+            <span class="chev">${Hub.icon('chevron')}</span></a>`; }).join('')
+          : `<p class="muted">${T('page.findHub.empty')}</p>`);
+      el.querySelectorAll('.pin').forEach(p => p.onclick = () => { selected = selected === p.dataset.hub ? null : p.dataset.hub; draw(); });
     }
-
-    function showNotice(msg) {
-      const banner = document.getElementById('geo-notice');
-      const text = document.getElementById('geo-notice-text');
-      if (banner && text) {
-        text.textContent = msg;
-        banner.style.display = 'flex';
-      }
-    }
-
-    document.getElementById('btn-dismiss-notice').onclick = () => {
-      document.getElementById('geo-notice').style.display = 'none';
-    };
-
-    document.getElementById('btn-my-loc').onclick = () => {
-      if (currentUserCoord && leafletMap) {
-        HubMap.flyTo(leafletMap, currentUserCoord.lat, currentUserCoord.lng, 16);
-      } else {
-        showNotice('Detecting your location...');
-      }
-    };
-
-    function fetchHubs() {
-      let query = [];
-      if (currentFilters.from_hub) query.push('from_hub=' + encodeURIComponent(currentFilters.from_hub));
-      if (currentFilters.vehicle_type) query.push('vehicle_type=' + encodeURIComponent(currentFilters.vehicle_type));
-      if (currentFilters.min_battery > 0) query.push('min_battery=' + encodeURIComponent(currentFilters.min_battery));
-      const url = '/api/reservation/search' + (query.length ? '?' + query.join('&') : '');
-
-      Hub.render(document.getElementById('app'), API.get(url), hubs => {
-        currentHubs = hubs || [];
-        initLeaflet();
-        renderMapMarkers(currentHubs);
-        renderHubList(currentHubs);
-      });
-    }
-
-    function renderMapMarkers(hubs) {
-      if (!leafletMap) return;
-
-      // Clear existing markers
-      mapMarkers.forEach(m => leafletMap.removeLayer(m));
-      mapMarkers = [];
-
-      hubs.forEach(h => {
-        const marker = HubMap.hubMarker(leafletMap, h, selectedHub => {
-          selectHubCard(selectedHub.hub_id);
-          if (currentUserCoord && selectedHub.location) {
-            HubMap.routeTo(leafletMap, currentUserCoord, selectedHub.location);
-          }
-        });
-        if (marker) mapMarkers.push(marker);
-      });
-    }
-
-    function selectHubCard(hubId) {
-      const el = document.getElementById('card-' + hubId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('highlighted');
-        setTimeout(() => el.classList.remove('highlighted'), 2000);
-      }
-    }
-
-    function renderHubList(hubs) {
-      const container = document.getElementById('app');
-      if (!hubs || hubs.length === 0) {
-        container.innerHTML = `<div class="card"><p class="muted">${Hub.esc(Hub.t('vehicle.noVehicles'))}</p></div>`;
-        return;
-      }
-
-      container.className = 'hub-list';
-      container.innerHTML = hubs.map(h => {
-        const hubName = I18n.hubName(h);
-        const utilPct = Math.round(h.utilization * 100);
-        const nearFull = h.near_capacity;
-
-        let vehiclesHtml = '';
-        if (h.vehicles && h.vehicles.length > 0) {
-          vehiclesHtml = `<div class="vehicle-grid">` +
-            h.vehicles.map(v => {
-              const batteryColor = v.battery_level >= 50 ? '#10b981' : (v.battery_level >= 30 ? '#f59e0b' : '#ef4444');
-              return `
-                <div class="vehicle-item">
-                  <div>
-                    <div class="v-header">
-                      <span class="v-title">${Hub.esc(v.model)} (${Hub.esc(v.type)})</span>
-                      <span class="badge ${v.battery_level < 30 ? 'warn' : ''}">${v.vehicle_id}</span>
-                    </div>
-                    <div class="battery-bar-wrap" style="margin-top: 10px;">
-                      <div class="battery-label-row">
-                        <span>${Hub.esc(Hub.t('vehicle.battery'))}</span>
-                        <span style="font-weight:700; color:${batteryColor};">${v.battery_level}%</span>
-                      </div>
-                      <div class="bar"><div style="width: ${v.battery_level}%; background: ${batteryColor};"></div></div>
-                      <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">
-                        ${Hub.esc(Hub.t('vehicle.range'))}: ~${v.estimated_range_km} km
-                      </div>
-                    </div>
-                  </div>
-                  <a href="/app/student/reserve-vehicle.html?hub_id=${encodeURIComponent(h.hub_id)}&vehicle_id=${encodeURIComponent(v.vehicle_id)}"
-                     class="button" style="text-align:center; text-decoration:none;">
-                     ${Hub.icon('zap')} ${Hub.esc(Hub.t('vehicle.reserveBtn'))}
-                  </a>
-                </div>
-              `;
-            }).join('') +
-          `</div>`;
-        } else {
-          vehiclesHtml = `<p class="muted" style="margin-bottom: 20px;">${Hub.esc(Hub.t('vehicle.noVehicles'))}</p>`;
-        }
-
-        return `
-          <div class="hub-detail-card" id="card-${Hub.esc(h.hub_id)}">
-            <div class="hub-card-header">
-              <div class="hub-title-group">
-                <h2 style="margin:0 0 4px 0;">${Hub.esc(hubName)}</h2>
-                <div class="chips">
-                  <span class="chip"><span>${h.capacity} spaces</span></span>
-                  <span class="chip ${nearFull ? 'warn' : ''}"><span>${utilPct}% ${Hub.esc(Hub.t('hub.utilization'))}</span></span>
-                </div>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button type="button" class="button secondary btn-show-route" data-hub="${Hub.esc(h.hub_id)}" style="font-size:0.85rem;">
-                  Walk Route
-                </button>
-                <a href="/app/student/reserve-vehicle.html?tab=parking&hub_id=${encodeURIComponent(h.hub_id)}"
-                   class="button secondary" style="text-decoration:none;">
-                   ${Hub.icon('parking')} ${Hub.esc(Hub.t('vehicle.parkBtn'))}
-                </a>
-              </div>
-            </div>
-
-            <!-- Dual-panel section 1: Shared Fleet -->
-            <div class="sub-section-title">
-              ${Hub.icon('bike')} ${Hub.esc(Hub.t('hub.sharedFleetSection'))} (${h.vehicles_available})
-            </div>
-            ${vehiclesHtml}
-
-            <!-- Dual-panel section 2: Private EV & Infrastructure -->
-            <div class="sub-section-title">
-              ${Hub.icon('plug')} ${Hub.esc(Hub.t('hub.privateEvSection'))}
-            </div>
-            <div class="infra-grid">
-              <div class="infra-stat">
-                <span class="val">${h.free_spaces}</span>
-                <span class="desc">${Hub.esc(Hub.t('hub.freeDocks'))}</span>
-              </div>
-              <div class="infra-stat">
-                <span class="val">${h.charging_points_free}</span>
-                <span class="desc">${Hub.esc(Hub.t('hub.chargers'))}</span>
-              </div>
-              <div style="text-align:right;">
-                <a href="/app/student/reserve-vehicle.html?tab=parking&hub_id=${encodeURIComponent(h.hub_id)}&mode=private"
-                   class="button secondary" style="text-decoration:none; font-size:0.85rem;">
-                   ${Hub.esc(Hub.t('vehicle.parkBtn'))}
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      container.querySelectorAll('.btn-show-route').forEach(btn => {
-        btn.onclick = () => {
-          const hubId = btn.dataset.hub;
-          const targetHub = currentHubs.find(h => h.hub_id === hubId);
-          if (targetHub && leafletMap && targetHub.location) {
-            HubMap.flyTo(leafletMap, targetHub.location.lat, targetHub.location.lng, 16);
-            if (currentUserCoord) {
-              HubMap.routeTo(leafletMap, currentUserCoord, targetHub.location);
-            }
-            window.scrollTo({ top: 120, behavior: 'smooth' });
-          }
-        };
-      });
-    }
-
-    document.getElementById('btn-filter').onclick = () => {
-      currentFilters.from_hub = document.getElementById('sel-from-hub').value;
-      currentFilters.vehicle_type = document.getElementById('sel-vtype').value;
-      currentFilters.min_battery = parseInt(document.getElementById('sel-battery').value) || 0;
-      fetchHubs();
-    };
-
-    document.getElementById('btn-reset').onclick = () => {
-      document.getElementById('sel-from-hub').value = '';
-      document.getElementById('sel-vtype').value = '';
-      document.getElementById('sel-battery').value = '0';
-      currentFilters = { from_hub: '', vehicle_type: '', min_battery: 0 };
-      fetchHubs();
-    };
-
-    // Initial load
-    fetchHubs();
+    document.getElementById('q').oninput = e => { query = e.target.value; draw(); document.getElementById('q').focus(); };
+    document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+      mode = b.dataset.m; document.querySelectorAll('#mode button').forEach(x => x.setAttribute('aria-pressed', x === b)); draw(); });
+    document.addEventListener('langchange', () => hubs.length && draw());
+    Hub.render(document.getElementById('app'), API.get('/api/hubs'), data => { hubs = data; draw(); });
   </script>
 </body>
 </html>
