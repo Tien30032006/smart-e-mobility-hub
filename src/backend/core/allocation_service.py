@@ -26,7 +26,20 @@ class AllocationService:
 
     def schedule_charging(self, vehicle_id: str) -> ChargingSession:
         # Owner: Member 2 (UC-CH-02/09). Delegates to charging.scheduler.
-        todo("Member 2", "UC-CH-09", "delegate to modules/charging/scheduler.py")
+        from fastapi import HTTPException
+        from ..modules.charging import scheduler, service
+        from ..modules.charging.domain import ACTIVE_SESSIONS
+        from .state_manager import network
+        with network.lock:
+            vehicle = network.get_vehicle(vehicle_id)
+            if not vehicle.hub_id or not vehicle.owner_id:
+                raise HTTPException(400, "A private vehicle parked at a hub is required")
+            session = next((s for s in network.charging_sessions.values()
+                            if s.vehicle_id == vehicle_id and s.status in ACTIVE_SESSIONS), None)
+            if session is None:
+                session = service.submit_charging_request(vehicle.owner_id, vehicle_id, vehicle.hub_id)
+            scheduler.run_prioritization(vehicle.hub_id)
+            return session
 
 
 allocation_service = AllocationService()
