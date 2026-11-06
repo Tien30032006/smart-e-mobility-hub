@@ -1,39 +1,233 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title data-i18n="page.findHub.title">Find Hub & Vehicle</title>
   <script src="/shared/i18n.js"></script>
+  <!-- Leaflet 1.9 CDN & CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Shared Leaflet Wrapper -->
+  <script src="/shared/map.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 140px;
+      flex: 1;
+    }
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 0.9rem;
+    }
+    .map-container-wrap {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    }
+    #leaflet-map {
+      width: 100%;
+      height: 380px;
+      z-index: 1;
+    }
+    .map-overlay-controls {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+    .map-notice-banner {
+      background: var(--warn-soft, #fef3c7);
+      color: #92400e;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    [data-theme="dark"] .map-notice-banner {
+      background: #78350f33;
+      color: #fde68a;
+    }
+    .hub-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .hub-detail-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .hub-detail-card.highlighted {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px var(--brand);
+    }
+    .hub-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .sub-section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 16px 0 12px 0;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vehicle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .vehicle-item {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .v-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .v-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .battery-bar-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .battery-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .infra-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      align-items: center;
+    }
+    .infra-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .infra-stat .val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--brand);
+    }
+    .infra-stat .desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
 </head>
 <body data-role="student">
-  <!-- OWNER: Member 1   USE CASES: U1
-       TODO: Hub map/list, available vehicles, battery %, free parking spaces. Filters: vehicle type, minimum battery, origin/destination Hub.
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
+  <!-- OWNER: Member 1   USE CASE: U1  (UI v2: mobile-first discover screen; data from /api/hubs.
+       TODO(Member 1): add vehicle-type / min-battery filters and link rows to reserve-vehicle.html?hub=<id>.) -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head">
-      <h1 data-i18n="page.findHub.title">Find Hub & Vehicle</h1>
-      <p class="muted" data-i18n="page.findHub.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 1</span></span>
-        <span class="chip"><span><span data-i18n="common.useCase"></span>: U1</span></span>
-      </div>
+      <h1 id="greet"></h1>
+      <p class="muted" data-i18n="page.findHub.sub"></p>
     </header>
-    <div id="app" class="card"></div>
+    <label class="field-label" for="q" data-i18n="page.findHub.dest"></label>
+    <div class="search"><input id="q" type="search" autocomplete="off" data-i18n-attr="placeholder:page.findHub.search"><span id="qi"></span></div>
+    <div class="seg full" role="group" id="mode" style="margin-top:16px">
+      <button type="button" data-m="shared" aria-pressed="true" data-i18n="page.findHub.shared"></button>
+      <button type="button" data-m="personal" aria-pressed="false" data-i18n="page.findHub.personal"></button>
+    </div>
+    <div id="app" style="margin-top:16px"></div>
   </main>
+
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
-    Hub.init();
-    // TODO(Member 1): replace this placeholder with the real UI for U1.
-    Hub.render(document.getElementById('app'), API.get('/api/reservation/search'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+    const s = Hub.init();
+    let mode = 'shared', query = '', hubs = [], selected = null;
+    const first = s ? s.full_name.trim().split(/\s+/).pop() : '';
+    const T = (k, n) => Hub.esc(Hub.t(k, { n }));
+    const stat = h => mode === 'shared' ? Hub.t('hub.vehShort', { n: h.vehicles_available }) + ' · ' + Hub.t('hub.spacesShort', { n: h.free_spaces })
+                                         : Hub.t('hub.spacesShort', { n: h.free_spaces }) + ' · ' + Hub.t('hub.freePorts', { n: h.charging_points_free });
+
+    function draw() {
+      document.getElementById('greet').textContent = Hub.t('page.findHub.greet', { name: first });
+      document.getElementById('qi').innerHTML = Hub.icon('search');
+      const list = hubs.filter(h => I18n.hubName(h).toLowerCase().includes(query.toLowerCase()))
+                       .sort((a, b) => b.vehicles_available - a.vehicles_available);
+      const el = document.getElementById('app');
+      el.innerHTML = Hub.mapHtml(hubs, h => Hub.esc(stat(h)), selected) +
+        `<div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span></div>` +
+        `<div class="section-title"><h2>${T('page.findHub.near')}</h2></div>` +
+        (list.length ? list.map(h => { const tn = Hub.tone(h);
+          return `<a class="card hubrow ${tn}" href="/app/student/reserve-vehicle.html?hub=${encodeURIComponent(h.hub_id)}" ${selected === h.hub_id ? 'aria-current="true"' : ''}>
+            <span class="pinico">${Hub.icon('pin')}</span>
+            <span class="grow"><b>${Hub.esc(I18n.hubName(h))}</b>
+              <span class="meta">${Hub.esc(Hub.t('hub.freeSpaces', { n: h.free_spaces }))} · ${Math.round(h.utilization * 100)}${Hub.esc(Hub.t('hub.full'))}</span><br>
+              <span class="ok">${Hub.esc(mode === 'shared' ? Hub.t('hub.ready', { n: h.vehicles_available }) : Hub.t('hub.freePorts', { n: h.charging_points_free }))}</span></span>
+            <span class="chev">${Hub.icon('chevron')}</span></a>`; }).join('')
+          : `<p class="muted">${T('page.findHub.empty')}</p>`);
+      el.querySelectorAll('.pin').forEach(p => p.onclick = () => { selected = selected === p.dataset.hub ? null : p.dataset.hub; draw(); });
+    }
+    document.getElementById('q').oninput = e => { query = e.target.value; draw(); document.getElementById('q').focus(); };
+    document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+      mode = b.dataset.m; document.querySelectorAll('#mode button').forEach(x => x.setAttribute('aria-pressed', x === b)); draw(); });
+    document.addEventListener('langchange', () => hubs.length && draw());
+    Hub.render(document.getElementById('app'), API.get('/api/hubs'), data => { hubs = data; draw(); });
   </script>
 </body>
 </html>

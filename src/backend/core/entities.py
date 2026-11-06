@@ -264,13 +264,23 @@ class ChargingSession:
     requested_by: Optional[str] = None    # user_id
 
     def schedule(self) -> None:
-        todo("Member 2", "UC-CH-02", "assign point + time window, status=SCHEDULED")
+        from ..modules.charging.scheduler import run_prioritization
+        from .state_manager import network
+        with network.lock:
+            if network.charging_sessions.get(self.session_id) is not self or not self.hub_id:
+                raise ValueError("Session must be registered at a hub before scheduling")
+            run_prioritization(self.hub_id)
 
     def complete(self) -> None:
-        todo("Member 2", "UC-CH-06", "set end_time, status=COMPLETED, free the charging point")
+        from ..modules.charging.service import complete_session
+        complete_session(self.session_id)
 
     def calculate_priority(self) -> int:
-        todo("Member 2", "UC-CH-09", "priority from battery level + urgency (needed_by)")
+        from ..modules.charging.scheduler import calculate_priority
+        from .state_manager import network
+        with network.lock:
+            self.priority = calculate_priority(network.get_vehicle(self.vehicle_id).battery_level, self.needed_by)
+            return self.priority
 
 
 @dataclass

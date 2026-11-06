@@ -6,34 +6,165 @@
   <title data-i18n="page.chargingOps.title">Charging Stations & Scheduling</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .charging-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:16px;}
+    .charging-fields label,.point-form label {display:flex;flex-direction:column;gap:6px;min-width:0;}
+    .charging-actions {display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;}
+    .charging-scroll {overflow-x:auto;}
+    .charging-criteria {display:flex;flex-wrap:wrap;gap:16px;border:1px solid var(--line);border-radius:var(--radius-sm);margin-top:16px;}
+    .charging-criteria label {display:flex;align-items:center;gap:8px;min-height:44px;}
+    .charging-criteria input {width:20px;min-height:20px;}
+    .point-form {display:grid;gap:10px;margin-top:16px;}
+    #message:empty,#proposal:empty {display:none;}
+    .charging-id {overflow-wrap:anywhere;}
+  </style>
 </head>
 <body data-role="operator">
-  <!-- OWNER: Member 2 + Member 3   USE CASES: UC-CH-07, UC-CH-08, UC-CH-09, UC-OP08, UC-OP09
-       TODO: Per-point charging status, change status (CH-08), run prioritization (CH-09), view queue + priority scores, manual override (OP09). Shared page: two members collaborate here.
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
   <nav id="nav"></nav>
   <main>
-    <header class="page-head">
-      <h1 data-i18n="page.chargingOps.title">Charging Stations & Scheduling</h1>
-      <p class="muted" data-i18n="page.chargingOps.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 2 + Member 3</span></span>
-        <span class="chip"><span><span data-i18n="common.useCases"></span>: UC-CH-07, UC-CH-08, UC-CH-09, UC-OP08, UC-OP09</span></span>
-      </div>
-    </header>
-    <div id="app" class="card"></div>
+    <header class="page-head"><h1 data-i18n="page.chargingOps.title"></h1>
+      <p class="muted" data-i18n="page.chargingOps.desc"></p></header>
+    <div id="message" class="card" role="status" aria-live="polite"></div>
+    <section class="card">
+      <h2 data-i18n="charging.schedule"></h2>
+      <form id="run-form">
+        <div class="charging-fields"><div id="hub-control"></div>
+          <label for="horizon"><span data-i18n="charging.horizon"></span><input id="horizon" type="number" min="1" max="10080" value="240" required></label></div>
+        <fieldset class="charging-criteria"><legend data-i18n="charging.criteria"></legend>
+          <label><input type="checkbox" name="criterion" value="battery_level" checked><span data-i18n="charging.criterion.battery_level"></span></label>
+          <label><input type="checkbox" name="criterion" value="needed_by" checked><span data-i18n="charging.criterion.needed_by"></span></label>
+          <label><input type="checkbox" name="criterion" value="waiting_time"><span data-i18n="charging.criterion.waiting_time"></span></label>
+        </fieldset>
+        <div class="charging-actions"><button type="submit" data-i18n="charging.run"></button>
+          <button type="button" class="secondary" id="refresh" data-i18n="charging.refresh"></button></div>
+      </form>
+    </section>
+    <section id="proposal" class="card" aria-live="polite"></section>
+    <h2 data-i18n="charging.monitor"></h2><p id="live-state" class="muted" data-i18n="charging.autoRefresh"></p>
+    <section id="points"></section>
+    <h2 data-i18n="charging.currentQueue"></h2><section id="queue" class="card charging-scroll"></section>
   </main>
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
+  <script src="/app/student/charging-common.js"></script>
   <script>
-    Hub.init();
-    // TODO(Member 2): replace this placeholder with the real UI for UC-CH-07, UC-CH-08, UC-CH-09, UC-OP08, UC-OP09.
-    Hub.render(document.getElementById('app'), API.get('/api/charging/points'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+    const session=Hub.init(), $=id=>document.getElementById(id), t=Hub.t, e=Hub.esc;
+    const fmt=value=>value?new Date(value).toLocaleString(I18n.lang):'—';
+    let selectedHub='', lastQueue=[], lastOptions=null;
+    function message(text,error=false) {
+      $('message').textContent=text; $('message').className=error?'error':'card';
+      if(text===t('charging.saved')) $('message').dataset.i18n='charging.saved'; else delete $('message').dataset.i18n;
+      $('message').setAttribute('role',error?'alert':'status');
+    }
+    async function action(button,fn) {
+      button.disabled=true;
+      try {await fn();} catch(err) {message(err.message,true);}
+      finally {if(button.isConnected)button.disabled=false;}
+    }
+    function outdatedTable(items) {
+      return `<div class="charging-scroll"><table><thead><tr><th>${e(t('charging.vehicle'))} / ${e(t('charging.point'))}</th><th>${e(t('charging.values'))}</th>
+        <th>${e(t('charging.lastUpdate'))}</th><th>${e(t('charging.age'))}</th></tr></thead><tbody>`+items.map(i=>
+        `<tr><td>${e(i.id)}</td><td>${e(JSON.stringify(i.last_known_values))}</td><td>${e(fmt(i.last_update))}</td><td>${Math.round(i.age_seconds||0)}</td></tr>`).join('')+'</tbody></table></div>';
+    }
+    function drawProposal(result) {
+      if(result.status==='awaiting_decision') {
+        $('proposal').innerHTML=`<h2>${e(t('charging.warningTitle'))}</h2>`+outdatedTable(result.outdated_items)+
+          `<div class="charging-actions"><button id="continue" type="button">${e(t('charging.continue'))}</button>
+          <button id="cancel-run" type="button" class="secondary">${e(t('charging.cancel'))}</button></div>`;
+        $('continue').onclick=event=>action(event.currentTarget,()=>generate({...lastOptions,continue_outdated:true}));
+        $('cancel-run').onclick=()=>Hub.render($('proposal'),Promise.resolve({status:'cancelled'}),drawProposal);
+        return;
+      }
+      if(result.status!=='proposed') {
+        const key={nothing_to_schedule:'noWork',cancelled:'cancelled',applied:'applied',discarded:'discarded'}[result.status]||'saved';
+        $('proposal').textContent=t('charging.'+key); return;
+      }
+      const assignments=new Map(result.assignments.map(a=>[a.session_id,a]));
+      $('proposal').innerHTML=`<h2>${e(t('charging.proposal'))}</h2><div class="charging-scroll"><table><thead><tr>
+        <th>${e(t('charging.vehicle'))}</th><th>${e(t('charging.priority'))}</th><th>${e(t('charging.point'))}</th>
+        <th>${e(t('charging.start'))}</th><th>${e(t('charging.end'))}</th><th>${e(t('charging.status'))}</th></tr></thead><tbody>`+
+        result.ranking.map(row=>{
+          const a=assignments.get(row.session_id), existing=lastQueue.find(s=>s.session_id===row.session_id);
+          const slot=a||existing||{}, unserved=result.unserved.includes(row.session_id);
+          return `<tr><td>${e(row.vehicle_id)}${row.battery_unconfirmed?`<br><span class="badge warn">${e(t('charging.unconfirmed'))}</span>`:''}</td>
+            <td>${row.priority}</td><td>${e(slot.point_id||'—')}</td><td>${e(fmt(slot.start_time))}</td><td>${e(fmt(slot.end_time))}</td>
+            <td>${e(t('charging.'+(unserved?'unserved':a?'assigned':'retained')))}</td></tr>`;
+        }).join('')+`</tbody></table></div><p>${e(t('charging.unserved'))}: ${result.unserved.length}</p>
+        <div class="charging-actions"><button id="approve" type="button">${e(t('charging.approve'))}</button>
+        <button id="discard" type="button" class="secondary">${e(t('charging.discard'))}</button></div>`;
+      ['approve','discard'].forEach(command=>$(command).onclick=event=>action(event.currentTarget,async()=>{
+        const response=await API.post(`/api/charging/proposals/${encodeURIComponent(result.proposal_id)}/${command}`);
+        await Hub.render($('proposal'),Promise.resolve(response),drawProposal); await refresh();
+      }));
+    }
+    async function generate(options) {
+      lastOptions={...options};
+      await Hub.render($('proposal'),API.post('/api/charging/prioritization/run',options),drawProposal);
+    }
+    function drawPoints(points) {
+      $('points').innerHTML='<div class="grid">'+points.map(p=>`<article class="card"><b class="charging-id">${e(p.point_id)}</b>
+        <p><span class="badge">${e(t('charging.status.'+p.status))}</span> · ${p.power_rating} kW</p>
+        ${p.hub_near_capacity?`<p class="badge warn">${e(t('charging.nearCapacity'))}</p>`:''}
+        ${p.data_outdated?`<p class="badge warn">${e(t('charging.outdated'))}</p>`:''}
+        <p>${e(t('charging.vehicle'))}: ${e(p.vehicle_id||'—')} · ${e(t('charging.battery'))}: ${p.battery_level===null?'—':p.battery_level+'%'}</p>
+        ${p.battery_data_outdated?`<p class="badge warn">${e(t('charging.outdated'))}: ${e(t('charging.battery'))}</p>`:''}
+        <p>${e(t('charging.eta'))}: ${e(fmt(p.estimated_completion))}</p>
+        <p>${e(t('charging.queue'))}: ${p.queue_length} · ${e(t('hub.chargers'))}: ${p.hub_free_points}</p>
+        <p class="muted">${e(t('charging.lastUpdate'))}: ${e(fmt(p.last_update))}</p>
+        <form class="point-form" data-point="${e(p.point_id)}">
+        <label>${e(t('charging.status'))}<select name="status"><option value="out_of_service">${e(t('charging.status.out_of_service'))}</option>
+        <option value="available"${p.status==='out_of_service'?' selected':''}>${e(t('charging.status.available'))}</option></select></label>
+        <label>${e(t('charging.reason'))}<input name="reason" required maxlength="500"></label>
+        <button type="submit" class="secondary">${e(t('charging.changeStatus'))}</button></form></article>`).join('')+'</div>';
+      $('points').querySelectorAll('form').forEach(form=>form.onsubmit=event=>{
+        event.preventDefault();action(event.submitter,async()=>{
+          const body={status:form.elements.status.value,reason:form.elements.reason.value};
+          const path='/api/charging/points/'+encodeURIComponent(form.dataset.point)+'/status';
+          const impact=await API.patch(path,body);
+          if(!confirm(t('charging.confirmImpact',{n:impact.affected_reservations,running:impact.ongoing_sessions})))return;
+          await API.patch(path,{...body,confirmed:true});message(t('charging.saved'));await refresh();
+        });
+      });
+    }
+    function drawQueue(rows) {
+      lastQueue=rows;
+      if(!rows.length){$('queue').textContent=t('charging.empty');return;}
+      $('queue').innerHTML=`<table><thead><tr><th>${e(t('charging.vehicle'))}</th><th>${e(t('charging.priority'))}</th>
+        <th>${e(t('charging.point'))}</th><th>${e(t('charging.status'))}</th><th>${e(t('charging.override'))}</th></tr></thead><tbody>`+
+        rows.map(s=>`<tr><td>${e(s.vehicle_id)}</td><td>${s.priority}</td><td>${e(s.point_id||'—')}</td><td>${e(t('charging.status.'+s.status))}</td>
+        <td>${s.status==='queued'?`<button type="button" class="secondary" data-override="${e(s.session_id)}">${e(t('charging.override'))}</button>`:'—'}</td></tr>`).join('')+'</tbody></table>';
+      $('queue').querySelectorAll('[data-override]').forEach(button=>button.onclick=()=>action(button,async()=>{
+        const reason=prompt(t('charging.overrideReason'));if(!reason||!reason.trim())return;
+        await API.post('/api/charging/prioritization/override',{hub_id:selectedHub,session_id:button.dataset.override,reason});
+        message(t('charging.saved'));await refresh();
+      }));
+    }
+    async function refresh() {
+      if(!selectedHub)return;
+      await Promise.all([
+        Hub.render($('points'),API.get('/api/charging/points?hub_id='+encodeURIComponent(selectedHub)),drawPoints),
+        Hub.render($('queue'),API.get('/api/charging/queue/'+encodeURIComponent(selectedHub)),drawQueue)
+      ]);
+    }
+    $('run-form').onsubmit=event=>{
+      event.preventDefault();action(event.submitter,async()=>{
+        const criteria=Array.from(document.querySelectorAll('[name="criterion"]:checked'),el=>el.value);
+        if(!criteria.length)throw new Error(t('charging.criteria'));
+        await generate({hub_id:selectedHub,horizon_minutes:Number($('horizon').value),criteria});
+      });
+    };
+    $('refresh').onclick=event=>action(event.currentTarget,refresh);
+    if(session) {
+      Hub.render($('hub-control'),API.get('/api/hubs'),hubs=>{
+        selectedHub=selectedHub||hubs[0].hub_id;
+        $('hub-control').innerHTML=`<label for="hub">${e(t('charging.hub'))}<select id="hub">`+hubs.map(h=>
+          `<option value="${e(h.hub_id)}">${e(I18n.hubName(h))}</option>`).join('')+'</select></label>';
+        $('hub').value=selectedHub;
+        $('hub').onchange=()=>{selectedHub=$('hub').value;refresh();};
+        refresh();
+      });
+      Charging.live(()=>{if(!document.activeElement.closest('.point-form'))return refresh();});
+    }
   </script>
 </body>
 </html>

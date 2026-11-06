@@ -18,15 +18,35 @@ class AllocationService:
 
     def allocate_vehicle(self, user_id: str, hub_id: str, vehicle_type: Optional[str] = None) -> Reservation:
         # Owner: Member 1 (U2). Pick a vehicle by battery level + availability.
-        todo("Member 1", "U2", "choose best shared vehicle at hub (battery, availability)")
+        from ..modules.reservation import service
+        return service.reserve_vehicle(user_id=user_id, hub_id=hub_id, vehicle_type=vehicle_type)
 
     def allocate_parking_space(self, hub_id: str, user_id: Optional[str] = None) -> ParkingSpace:
         # Owner: Member 1 (U3). Must be atomic: use `with network.lock:`.
-        todo("Member 1", "U3", "pick a free ParkingSpace and mark reserved_by atomically")
+        from .state_manager import network
+        with network.lock:
+            hub = network.get_hub(hub_id)
+            space = next((s for s in hub.parking_spaces.values() if s.is_available()), None)
+            if space is None:
+                raise ValueError(f"No available parking space at hub {hub_id}")
+            return space
 
     def schedule_charging(self, vehicle_id: str) -> ChargingSession:
         # Owner: Member 2 (UC-CH-02/09). Delegates to charging.scheduler.
-        todo("Member 2", "UC-CH-09", "delegate to modules/charging/scheduler.py")
+        from fastapi import HTTPException
+        from ..modules.charging import scheduler, service
+        from ..modules.charging.domain import ACTIVE_SESSIONS
+        from .state_manager import network
+        with network.lock:
+            vehicle = network.get_vehicle(vehicle_id)
+            if not vehicle.hub_id or not vehicle.owner_id:
+                raise HTTPException(400, "A private vehicle parked at a hub is required")
+            session = next((s for s in network.charging_sessions.values()
+                            if s.vehicle_id == vehicle_id and s.status in ACTIVE_SESSIONS), None)
+            if session is None:
+                session = service.submit_charging_request(vehicle.owner_id, vehicle_id, vehicle.hub_id)
+            scheduler.run_prioritization(vehicle.hub_id)
+            return session
 
 
 allocation_service = AllocationService()

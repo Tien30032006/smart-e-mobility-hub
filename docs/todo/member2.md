@@ -2,41 +2,45 @@
 
 * Your spec document: **Charging__Scheduling.docx**
 * Code folder: `src/backend/modules/charging/`
-* UI pages: `student/charging-request.html` and (shared with Member 3) `operator/charging.html`
+* UI pages: `student/charging-request.html`, `charging-vehicles.html`, `charging-schedule.html`, `charging-status.html` and (shared with Member 3) `operator/charging.html`
 * Your tests: `src/backend/tests/test_charging.py` (remove `@SKIP` as each use case is finished)
 * Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
 
-Every place that needs work already has a stub function that calls `todo(...)` with a docstring of guidance – find them with `grep -rn "todo(" src/backend/modules/charging/`. Calling an unfinished endpoint returns HTTP 501 with your name.
+The Member 2 code stubs have been implemented. The code/test checklist below is updated;
+personal diagrams, reports and group deliverables remain tracked separately. Verification:
+`python -m pytest -q` reports **26 passed, 24 skipped** (16 selected TV2 cases; extended 75-case regression suite runs separately) (the remaining skips belong to other modules).
+
+Implementation notes, API workflow, SOLID rationale and demo assumptions: [charging-implementation.md](../charging-implementation.md).
 
 ## A. Code (work in order P0 → P1 → P2)
 
 ### P0 – do first; others depend on it / foundation
 
-- [ ] **UC-CH-09 priority algorithm** — `scheduler.calculate_priority` (pure function), `run_prioritization`, `get_queue`
+- [x] **UC-CH-09 priority algorithm** — `scheduler.calculate_priority` (pure function), `run_prioritization`, `get_queue`
   - Suggested formula is in the docstring; low-battery / soon-needed vehicles are charged first; never assign a broken or reserved point. **Members 3 and 4 depend on this** – do it first.
-- [ ] **UC-CH-01 submit charging request** — `service.submit_charging_request`
+- [x] **UC-CH-01 submit charging request** — `service.submit_charging_request`
   - Private EVs only; create a QUEUED session; emit `CHARGING_REQUESTED`.
-- [ ] **UC-CH-10 sensor data** — `telemetry.ingest_readings`, `start_simulator`
+- [x] **UC-CH-10 sensor data** — `telemetry.ingest_readings`, `start_simulator`
   - Near-real-time battery / charging-point updates → makes the demo feel "live" for the whole team.
 
 ### P1 – main features for the demo
 
-- [ ] **UC-CH-02 + 03 schedule + select point** — `schedule_charging_session`, `list_available_points`
+- [x] **UC-CH-02 + 03 schedule + select point** — `schedule_charging_session`, `list_available_points`
   - Prevent overlapping time slots on the same point (inside `network.lock`); create `Reservation(kind=CHARGING)`.
-- [ ] **UC-CH-05 cancel** — `cancel_charging_reservation`
+- [x] **UC-CH-05 cancel** — `cancel_charging_reservation`
   - Release the point/time slot and move the queue forward.
-- [ ] **UC-CH-07 + 08 monitor / change point status** — `point_monitor.py`
+- [x] **UC-CH-07 + 08 monitor / change point status** — `point_monitor.py`
   - A point set to OUT_OF_SERVICE while charging → return the session to the queue. Emit `CHARGER_STATUS_CHANGED`.
-- [ ] **UC-CH-06 view charging status** — `get_my_charging_status`
+- [x] **UC-CH-06 view charging status** — `get_my_charging_status`
   - Queue position, assigned point, current battery, ETA = (100 − battery) / power.
 
 ### P2 – polish
 
-- [ ] **UC-CH-04 smart suggestion** — `get_smart_suggestion`
+- [x] **UC-CH-04 smart suggestion** — `get_smart_suggestion`
   - Score (Hub, point, time slot) by battery + the time the vehicle is needed + expected availability.
-- [ ] **`apply_manual_override`** — the function Member 3 calls for UC-OP09
+- [x] **`apply_manual_override`** — the function Member 3 calls for UC-OP09
   - Do it after P0 but before integration; emit `CHARGING_OVERRIDE`.
-- [ ] **UI** — the student page + the charging-point controls on `operator/charging.html` (shared with Member 3)
+- [x] **UI** — the student page + the charging-point controls on `operator/charging.html` (shared with Member 3)
 
 ## B. Personal documents (course requirement: each member covers their own use cases)
 
@@ -65,10 +69,10 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ## D. Minimum tests required
 
-- [ ] A low battery gets a higher priority score than a high battery (same time-needed)
-- [ ] An OUT_OF_SERVICE point is never assigned
-- [ ] Two bookings overlapping on the same point → rejected
-- [ ] Telemetry with a battery value outside 0–100 is rejected
+- [x] A low battery gets a higher priority score than a high battery (same time-needed)
+- [x] An OUT_OF_SERVICE point is never assigned
+- [x] Two bookings overlapping on the same point → rejected
+- [x] Telemetry with a battery value outside 0–100 is rejected
 
 ## E. Shared team work (you contribute too)
 
@@ -85,3 +89,16 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 - [ ] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
 - [ ] The UI page is usable (no more yellow TODO box)
 - [ ] Sequence + activity diagrams match the real code
+
+
+## TV2 pipeline demo update
+
+- [x] GET/POST `/api/me/vehicles`; ownership from authenticated student.
+- [x] Mobile request wizard, availability and nearby Hub information.
+- [x] Slot grid, smart suggestions, collision alternatives and cancellation.
+- [x] Charging progress, needed-by edit and live priority read model.
+- [x] Event-bus adapter for TV5 simulator; Data Update Log with reception-time freshness.
+- [x] SSE consumer with polling fallback; shared SSE server and Google/JWT remain TV5 tasks.
+- [x] Four test categories, 16 cases; Word Test Plan plus 16 testcase tables.
+
+Integration contracts and limitations: [charging-tv2-integration.md](../charging-tv2-integration.md).

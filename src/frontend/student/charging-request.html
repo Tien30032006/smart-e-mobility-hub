@@ -1,39 +1,85 @@
 <!doctype html>
-<html lang="en">
-<head>
+<html lang="en"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title data-i18n="page.chargingReq.title">Charging Request</title>
-  <script src="/shared/i18n.js"></script>
-  <link rel="stylesheet" href="/app/assets/css/style.css">
-</head>
-<body data-role="student">
-  <!-- OWNER: Member 2   USE CASES: UC-CH-01..06
-       TODO: Submit a charging request, schedule a session (select a charging point), view smart suggestions, cancel, track progress (queue position, ETA).
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
-  <nav id="nav"></nav>
-  <main>
-    <header class="page-head">
-      <h1 data-i18n="page.chargingReq.title">Charging Request</h1>
-      <p class="muted" data-i18n="page.chargingReq.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 2</span></span>
-        <span class="chip"><span><span data-i18n="common.useCases"></span>: UC-CH-01..06</span></span>
-      </div>
-    </header>
-    <div id="app" class="card"></div>
+  <meta name="color-scheme" content="light dark"><title data-i18n="page.chargingReq.title">Charging Request</title>
+  <script src="/shared/i18n.js"></script><link rel="stylesheet" href="/app/assets/css/style.css">
+  <link rel="stylesheet" href="charging-common.css">
+</head><body data-role="student">
+  <nav id="nav"></nav><main>
+    <header class="page-head"><h1 data-i18n="page.chargingReq.title"></h1><p class="muted" data-i18n="charging.reviewHint"></p></header>
+    <nav id="charging-nav" class="charging-tabs" aria-label="Charging"></nav>
+    <div id="message" role="status" aria-live="polite"></div>
+    <section id="controls" class="card"></section>
   </main>
-  <script src="/shared/api-client.js"></script>
-  <script src="/app/assets/js/main.js"></script>
+  <script src="/shared/api-client.js"></script><script src="/app/assets/js/main.js"></script><script src="charging-common.js"></script>
   <script>
-    Hub.init();
-    // TODO(Member 2): replace this placeholder with the real UI for UC-CH-01..06.
-    Hub.render(document.getElementById('app'), API.get('/api/charging/my-status'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+    const {$,t,esc:e,fmt,local,field,message,run}=Charging,session=Charging.init();
+    let step=0,vehicles=[],hubs=[],capacity=null;
+    const draft={target:80,needed:local(Date.now()+4*3600000)};
+    const selectedVehicle=()=>vehicles.find(v=>v.vehicle_id===draft.vehicle);
+    const selectedHub=()=>hubs.find(h=>h.hub_id===draft.hub);
+    function drawCapacity(data) {
+      capacity=data;const el=$('capacity');if(!el)return;
+      el.innerHTML=`<div class="charging-summary"><div><b>${data.free_points}</b><span>${e(t('hub.chargers'))}</span></div>
+      <div><b>${data.queue_length}</b><span>${e(t('charging.queue'))}</span></div>
+      <div><b>${data.estimated_wait_minutes===null?'—':data.estimated_wait_minutes}</b><span>${e(t('charging.wait'))} · ${e(t('charging.minutes'))}</span></div></div>`+
+      (data.data_outdated?`<p class="badge warn">${e(t('charging.outdated'))}</p>`:'')+
+      (!data.free_points?`<h3>${e(t('charging.nearby'))}</h3>`+data.alternatives.map(h=>`<p>${e(I18n.hubName(h))} · ${h.free_points} ${e(t('hub.chargers'))}</p>`).join(''):'');
+    }
+    async function loadCapacity() {
+      const id=draft.hub,el=$('capacity');if(!el)return;
+      const data=await API.get('/api/charging/hubs/'+encodeURIComponent(id)+'/availability');
+      if(draft.hub===id&&el.isConnected)drawCapacity(data);
+    }
+    function remember() { $('wizard')?.querySelectorAll('input,select').forEach(el=>draft[el.id]=el.value); }
+    function drawControls(data) {
+      [vehicles,hubs]=data;
+      if(!vehicles.length){$('controls').innerHTML=`<p>${e(t('charging.noVehicles'))}</p><a class="btn" href="charging-vehicles.html">${e(t('charging.registerVehicle'))}</a>`;return;}
+      draft.vehicle=draft.vehicle||vehicles[0].vehicle_id;
+      draft.hub=draft.hub||selectedVehicle().hub_id||hubs[0].hub_id;
+      const labels=['stepVehicle','stepHub','stepNeed','stepReview'];
+      let content='';
+      if(step===0)content=`<label for="vehicle">${e(t('charging.vehicle'))}<select id="vehicle">${vehicles.map(v=>`<option value="${e(v.vehicle_id)}">${e(v.model)} · ${v.battery_level}%</option>`).join('')}</select></label>
+        <small id="vehicle-error" class="field-error" role="alert"></small><a href="charging-vehicles.html">${e(t('charging.registerVehicle'))}</a>`;
+      if(step===1)content=`<label for="hub">${e(t('charging.hub'))}<select id="hub">${hubs.map(h=>`<option value="${e(h.hub_id)}">${e(I18n.hubName(h))}</option>`).join('')}</select></label>
+        <small id="hub-error" class="field-error" role="alert"></small><div id="capacity"></div>`;
+      if(step===2)content=`<label for="target">${e(t('charging.target'))}<input id="target" type="number" min="${selectedVehicle().battery_level+1}" max="100" aria-describedby="target-error"></label>
+        <small id="target-error" class="field-error" role="alert"></small>
+        <label for="needed">${e(t('charging.neededBy'))}<input id="needed" type="datetime-local" aria-describedby="needed-error"></label>
+        <small id="needed-error" class="field-error" role="alert"></small>
+        <p class="muted">${e(t('charging.battery'))}: ${selectedVehicle().battery_level}% · ${e(t('charging.lastUpdate'))}: ${e(fmt(selectedVehicle().last_update))}</p>`;
+      if(step===3)content=`<dl class="charging-review"><dt>${e(t('charging.vehicle'))}</dt><dd>${e(selectedVehicle().model)}</dd>
+        <dt>${e(t('charging.hub'))}</dt><dd>${e(I18n.hubName(selectedHub()))}</dd>
+        <dt>${e(t('charging.target'))}</dt><dd>${e(draft.target)}%</dd><dt>${e(t('charging.neededBy'))}</dt><dd>${e(fmt(draft.needed))}</dd></dl>`;
+      $('controls').innerHTML=`<ol class="charging-steps">${labels.map((key,i)=>`<li${i===step?' aria-current="step"':''}>${i+1}. ${e(t('charging.'+key))}</li>`).join('')}</ol>
+        <form id="wizard" novalidate><div class="charging-fields">${content}</div><div class="charging-actions">
+        ${step?`<button type="button" class="secondary" id="back">${e(t('charging.back'))}</button>`:''}
+        <button type="submit">${e(t(step===3?'charging.confirmSend':'charging.next'))}</button></div></form>`;
+      Object.entries(draft).forEach(([key,value])=>{if($(key))$(key).value=value;});
+      if($('back'))$('back').onclick=()=>{remember();step--;drawControls([vehicles,hubs]);};
+      $('wizard').oninput=remember;
+      $('wizard').onchange=event=>{remember();if(event.target.id==='vehicle'){draft.hub=selectedVehicle().hub_id;capacity=null;}if(event.target.id==='hub'){capacity=null;run(null,loadCapacity);}};
+      $('wizard').onsubmit=event=>{event.preventDefault();run(event.submitter,async()=>{
+        remember();
+        if(step===0&&!field('vehicle',selectedVehicle()?'':t('charging.chooseVehicleError')))return;
+        if(step===1){if(!capacity)await loadCapacity();
+          const error=selectedVehicle().hub_id!==draft.hub?t('charging.parkedError'):capacity?.operational_points===0?t('charging.noOperational'):'';
+          if(!field('hub',error))return;}
+        if(step===2){
+          const target=Number(draft.target),needed=new Date(draft.needed).getTime();
+          const a=field('target',Number.isInteger(target)&&target>selectedVehicle().battery_level&&target<=100?'':t('charging.targetError'));
+          const b=field('needed',needed>Date.now()?'':t('charging.deadlineError'));if(!a||!b)return;
+        }
+        if(step<3){step++;drawControls([vehicles,hubs]);return;}
+        const body={vehicle_id:draft.vehicle,hub_id:draft.hub,target_level:Number(draft.target),needed_by:new Date(draft.needed).toISOString()};
+        try{await API.post('/api/charging/requests',body);}catch(err){
+          if(err.detail?.code==='outdated_data'){if(!Charging.stale(err.detail.items))return;await API.post('/api/charging/requests',{...body,continue_outdated:true});}
+          else throw err;
+        }
+        location.href='charging-status.html';
+      });};
+      if(step===1)run(null,loadCapacity);
+    }
+    if(session)Hub.render($('controls'),Promise.all([API.get('/api/me/vehicles'),API.get('/api/hubs')]),drawControls);
   </script>
-</body>
-</html>
+</body></html>
