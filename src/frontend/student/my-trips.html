@@ -127,7 +127,7 @@
     <div id="invoice-modal" class="dialog-backdrop" style="display:none;">
       <div class="dialog-box">
         <div style="text-align:center; margin-bottom:16px;">
-          <div style="font-size:2rem; color:var(--brand);">${Hub.icon('shield')}</div>
+          <i data-lucide="shield-check" style="width: 48px; height: 48px; color: var(--brand); margin: 0 auto; display: block;"></i>
           <h3 style="margin:4px 0 0 0;" data-i18n="trip.invoiceTitle">Trip Invoice & Receipt</h3>
           <span class="badge" id="inv-trip-id">TRIP-001</span>
         </div>
@@ -252,14 +252,16 @@
 
           <div class="trip-actions">
             <button id="btn-open-return" class="button">
-              ${Hub.icon('shield')} ${Hub.esc(Hub.t('trip.returnBtn'))}
+              <i data-lucide="log-in" style="width: 16px; height: 16px;"></i> ${Hub.esc(Hub.t('trip.returnBtn'))}
             </button>
             <button id="btn-open-issue" class="button secondary">
-              ${Hub.icon('alert')} ${Hub.esc(Hub.t('trip.reportBtn'))}
+              <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> ${Hub.esc(Hub.t('trip.reportBtn'))}
             </button>
           </div>
         </div>
       `;
+      // Call lucide to render icons explicitly for dynamically injected content
+      if (typeof lucide !== 'undefined') lucide.createIcons();
 
       const startTime = new Date(trip.start_time).getTime();
       function updateLiveTimer() {
@@ -433,6 +435,11 @@
     };
 
     loadData();
+  </script>
+  <!-- Bổ sung thư viện Lucide để render icon -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    lucide.createIcons();
   </script>
 </body>
 </html>

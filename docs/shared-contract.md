@@ -64,11 +64,18 @@ Shared vehicle: `EVehicle.owner_id is None`. Private vehicle: `owner_id` = the s
 ## 6. API conventions
 
 * Prefixes: `/api/reservation` (Member 1), `/api/charging` (Member 2), `/api/operator` (Member 3), `/api/simulation` (Member 4); shared APIs `/api/auth`, `/api/hubs`, `/api/network`.
-* Login: `POST /api/auth/login {email}` → token = `user_id`; send `Authorization: Bearer <user_id>`.
+* Auth (TV5): **signed JWT** (HS256) in `Authorization: Bearer <jwt>`. `POST /api/auth/google {credential}` (Google ID token; first login creates the Student),
+  `POST /api/auth/demo-login {email}` (only when `DEMO_MODE=true`), `GET /api/auth/config`, `GET/PATCH /api/me`.
+  `require_student` / `require_operator` keep their signatures. In tests use `from .conftest import auth` / `core.auth.issue_token(user)`; a raw `user_id` is **not** a token any more.
+* Realtime: `GET /api/stream?token=<jwt>` (SSE) → `hub_updated, vehicle_updated, alert_created, reservation_changed, payment_updated`; client `shared/stream.js`.
+  Emitting a bus event (see §3) is enough for the stream to forward it - no extra code in your module.
+* Demo controls (operator): `POST /api/demo/reset`, `GET/POST /api/demo/simulator`, `POST /api/demo/telemetry {target_type: hub|vehicle, target_id, cut}`, `GET /api/demo/database`.
+* Hub status now has `data_connection: "ok" | "lost"` (lost while telemetry of that hub is cut).
+* Persistence: SQLite, see [database.md](database.md).
 * Business errors: `HTTPException(400/404/409, detail="…")` (409 = the resource was just taken by someone else). Not implemented yet: automatic HTTP 501.
 * Timestamps: ISO-8601 UTC (`datetime.now(timezone.utc)`).
 
-## 7. Demo accounts
+## 7. Demo accounts (via `POST /api/auth/demo-login`, `DEMO_MODE=true`)
 
 | Email | Role | user_id |
 |---|---|---|

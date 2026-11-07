@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="auth.title">Sign in</title>
+  <script src="/shared/i18n.js"></script>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body data-role="any">
+  <!-- Login: Google Sign-In (real) + seeded demo accounts (only when DEMO_MODE=true on the server). -->
+  <nav id="nav"></nav>
+  <main>
+    <section class="card auth-card">
+      <h1 data-i18n="auth.title"></h1>
+      <p class="muted" data-i18n="auth.subtitle"></p>
+      <div id="google-btn" aria-live="polite"></div>
+      <div id="login-msg" class="field-error" role="alert"></div>
+
+      <div id="demo-area" hidden>
+        <div class="auth-or"><span data-i18n="auth.or"></span></div>
+        <div class="roles" id="demo-list"></div>
+      </div>
+      <p id="demo-off" class="muted" hidden data-i18n="auth.demoOff"></p>
+    </section>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    const msg = document.getElementById('login-msg');
+    const params = new URLSearchParams(location.search);
+    const safeNext = () => { const n = params.get('next'); return n && n.startsWith('/app/') && !n.includes('//') ? n : null; };
+    const go = s => { location.href = (s.role === 'student' && s.onboarded === false) ? '/app/onboarding.html' : (safeNext() || API.homeFor(s)); };
+    const fail = key => { msg.textContent = Hub.t(key); };
+
+    if (API.session()) go(API.session());      // already signed in
+
+    async function onGoogle(resp) {
+      msg.textContent = '';
+      try { go(await API.loginGoogle(resp.credential)); }
+      catch (e) { e.status === 403 ? fail('auth.domain') : (msg.textContent = e.message || Hub.t('auth.googleFailed')); }
+    }
+
+    function mountGoogle(clientId, tries) {
+      if (window.google && google.accounts && google.accounts.id) {
+        google.accounts.id.initialize({ client_id: clientId, callback: onGoogle, ux_mode: 'popup' });
+        google.accounts.id.renderButton(document.getElementById('google-btn'),
+          { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 320, locale: I18n.lang });
+      } else if (tries > 0) setTimeout(() => mountGoogle(clientId, tries - 1), 300);
+      else fail('auth.googleFailed');
+    }
+
+    (async () => {
+      let cfg;
+      try { cfg = await API.config(); } catch (e) { return fail('home.loginFailed'); }
+      if (cfg.google_client_id) mountGoogle(cfg.google_client_id, 20); else fail('auth.googleMissing');
+      if (cfg.demo_mode) {
+        document.getElementById('demo-area').hidden = false;
+        document.getElementById('demo-list').innerHTML = cfg.demo_accounts.map(a =>
+          `<button type="button" class="role-card" data-email="${Hub.esc(a.email)}"><span class="ico">${Hub.icon(a.role === 'operator' ? 'shield' : (a.has_private_ev ? 'plug' : 'bike'))}</span>` +
+          `<strong>${Hub.esc(a.full_name)}</strong><span class="d">${Hub.esc(a.email)}</span></button>`).join('');
+        document.querySelectorAll('#demo-list button').forEach(b => b.onclick = async () => {
+          b.disabled = true; msg.textContent = '';
+          try { go(await API.login(b.dataset.email)); } catch (e) { msg.textContent = e.message || Hub.t('auth.loginFailed'); b.disabled = false; }
+        });
+      } else document.getElementById('demo-off').hidden = false;
+    })();
+  </script>
+</body>
+</html>

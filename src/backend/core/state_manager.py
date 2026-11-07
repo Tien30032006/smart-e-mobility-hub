@@ -49,6 +49,9 @@ class HubNetworkManager:
         self.users: Dict[str, User] = {}
         self.reservations: Dict[str, Reservation] = {}
         self.charging_sessions: Dict[str, ChargingSession] = {}
+        # Demo switches (TV5): hubs / vehicles whose telemetry is cut ("Data connection lost").
+        self.cut_hubs: set = set()
+        self.cut_vehicles: set = set()
         # Extra per-module stores (alerts, incidents, relocation orders, ...)
         # can be added by modules in their own files - do not grow this class.
 
@@ -60,6 +63,8 @@ class HubNetworkManager:
             self.users.clear()
             self.reservations.clear()
             self.charging_sessions.clear()
+            self.cut_hubs.clear()
+            self.cut_vehicles.clear()
 
     def register_hub(self, hub: MobilityHub) -> None:
         with self.lock:
@@ -121,6 +126,7 @@ class HubNetworkManager:
                 "charging_points_free": sum(p.status == ChargingPointStatus.AVAILABLE for p in points),
                 "charging_points_out_of_service": sum(
                     p.status == ChargingPointStatus.OUT_OF_SERVICE for p in points),
+                "data_connection": "lost" if hub_id in self.cut_hubs else "ok",
             }
 
     def get_network_status(self) -> dict:

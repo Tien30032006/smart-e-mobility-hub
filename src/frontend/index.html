@@ -16,6 +16,7 @@
       <p class="muted" data-i18n="app.tagline"></p>
       <p class="muted"><small data-i18n="app.mvp"></small></p>
 
+      <p style="margin-top:20px"><a class="btn" href="/app/login.html" data-i18n="home.signIn"></a></p>
       <h2 data-i18n="home.loginTitle" style="margin-top:24px"></h2>
       <p class="muted" data-i18n="home.loginDesc"></p>
       <div class="roles" id="login">
@@ -49,8 +50,8 @@
     document.querySelectorAll('#login button').forEach(b => b.onclick = async () => {
       const msg = document.getElementById('login-msg');
       msg.textContent = ''; b.disabled = true;
-      try { await API.login(b.dataset.email); location.href = '/app/' + b.dataset.go; }
-      catch (e) { msg.textContent = Hub.t('home.loginFailed'); b.disabled = false; }
+      try { const sess = await API.login(b.dataset.email); location.href = API.homeFor(sess); }
+      catch (e) { msg.textContent = e.status === 403 ? Hub.t('auth.demoOff') : Hub.t('home.loginFailed'); b.disabled = false; }
     });
 
     Hub.render(document.getElementById('app'), API.get('/api/hubs'), hubs => {

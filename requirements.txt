@@ -4,4 +4,7 @@ pydantic>=2
 python-dotenv
 pytest
 httpx
-# Member 4: add openpyxl or reportlab here when you pick the report format (UC7)
+PyJWT>=2.7
+google-auth>=2.20
+requests
+openpyxl

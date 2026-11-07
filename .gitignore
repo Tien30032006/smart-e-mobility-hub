@@ -19,3 +19,9 @@ Thumbs.db
 
 # Temporary data
 data/tmp/
+# Secrets and local database (TV5)
+.env
+data/*.db
+data/*.db-wal
+data/*.db-shm
+node_modules/

@@ -43,4 +43,6 @@ def seed_network(target: HubNetworkManager = default_network, fresh: bool = True
             else:
                 target.register_user(Operator(user_id=u["id"], full_name=u["full_name"], email=u["email"],
                                               operator_id=u.get("operator_id", "")))
+        for user in target.users.values():          # seeded accounts skip onboarding
+            user._db = {"onboarded": True, "created_at": None}
     return target

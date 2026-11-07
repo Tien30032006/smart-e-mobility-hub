@@ -39,10 +39,12 @@ def queue_request(**kwargs):
 
 
 def other_student():
-    network.register_user(Student('U-X', 'Student X', 'x@example.test', has_private_ev=True))
+    user = Student('U-X', 'Student X', 'x@example.test', has_private_ev=True)
+    network.register_user(user)
     network.register_vehicle(EVehicle('PV-X', battery_level=40, hub_id=HUB, owner_id='U-X'))
     telemetry.ingest_readings([{'kind':'vehicle','id':'PV-X','battery_level':40}])
-    return {'Authorization':'Bearer U-X'}
+    from src.backend.core.auth import issue_token  # tokens are signed JWTs now (TV5)
+    return {'Authorization': f'Bearer {issue_token(user)}'}
 
 
 def booking_window():
