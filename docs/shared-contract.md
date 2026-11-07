@@ -65,7 +65,11 @@ Shared vehicle: `EVehicle.owner_id is None`. Private vehicle: `owner_id` = the s
 
 * Prefixes: `/api/reservation` (Member 1), `/api/charging` (Member 2), `/api/operator` (Member 3), `/api/simulation` (Member 4); shared APIs `/api/auth`, `/api/hubs`, `/api/network`.
 * Auth (TV5): **signed JWT** (HS256) in `Authorization: Bearer <jwt>`. `POST /api/auth/google {credential}` (Google ID token; first login creates the Student),
+  `POST /api/auth/register {full_name, email, password}` (creates a Student, `onboarded=false`), `POST /api/auth/login {email, password}`,
+  `POST /api/auth/password {new_password, current_password?}` (signed in; Google-only accounts can add a password),
   `POST /api/auth/demo-login {email}` (only when `DEMO_MODE=true`), `GET /api/auth/config`, `GET/PATCH /api/me`.
+  Passwords: PBKDF2-SHA256, stored in `users.password_hash` (SQLite), >= 8 chars with letters + digits, 5 wrong tries / 5 min per e-mail -> 429.
+  A first Google login on an e-mail/password account links Google and **removes the password** (it was never e-mail-verified).
   `require_student` / `require_operator` keep their signatures. In tests use `from .conftest import auth` / `core.auth.issue_token(user)`; a raw `user_id` is **not** a token any more.
 * Realtime: `GET /api/stream?token=<jwt>` (SSE) → `hub_updated, vehicle_updated, alert_created, reservation_changed, payment_updated`; client `shared/stream.js`.
   Emitting a bus event (see §3) is enough for the stream to forward it - no extra code in your module.

@@ -31,6 +31,22 @@ class EmailIn(BaseModel):
     email: str
 
 
+class RegisterIn(BaseModel):
+    full_name: str = Field(max_length=80)
+    email: str = Field(max_length=200)
+    password: str = Field(max_length=128)
+
+
+class LoginIn(BaseModel):
+    email: str = Field(max_length=200)
+    password: Optional[str] = Field(default=None, max_length=128)   # omitted = legacy demo login
+
+
+class PasswordIn(BaseModel):
+    new_password: str = Field(max_length=128)
+    current_password: str = Field(default="", max_length=128)
+
+
 class ProfilePatch(BaseModel):
     full_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
     student_code: Optional[str] = None
@@ -57,6 +73,7 @@ class SimulatorIn(BaseModel):
 def auth_config():
     """What the login page needs: Google client id (public) and whether demo login is on."""
     return {"google_client_id": settings.google_client_id, "demo_mode": settings.demo_mode,
+            "min_password_length": auth.MIN_PASSWORD_LEN,
             "demo_accounts": auth.demo_accounts() if settings.demo_mode else []}
 
 
@@ -72,10 +89,25 @@ def demo_login(body: EmailIn):
     return auth.session_payload(auth.demo_login(body.email))
 
 
-@router.post("/api/auth/login", tags=["Auth"], deprecated=True)
-def legacy_login(body: EmailIn):
-    """Kept for old pages/tests: identical to demo-login (and only works when DEMO_MODE=true)."""
-    return auth.session_payload(auth.demo_login(body.email))
+@router.post("/api/auth/register", tags=["Auth"], status_code=201)
+def register(body: RegisterIn):
+    """Create a student account with e-mail + password. The new student still has to finish onboarding."""
+    return auth.session_payload(auth.register_student(body.full_name, body.email, body.password))
+
+
+@router.post("/api/auth/login", tags=["Auth"])
+def login(body: LoginIn):
+    """E-mail + password. Without ``password`` this is the old demo-login (DEMO_MODE only, deprecated)."""
+    if body.password is None:
+        return auth.session_payload(auth.demo_login(body.email))
+    return auth.session_payload(auth.login_password(body.email, body.password))
+
+
+@router.post("/api/auth/password", tags=["Auth"])
+def set_password(body: PasswordIn, user: User = Depends(auth.current_user)):
+    """Set (Google-only accounts) or change the password of the signed-in user."""
+    auth.change_password(user, body.new_password, body.current_password)
+    return {"ok": True}
 
 
 # ---- profile --------------------------------------------------------------------------
@@ -85,7 +117,8 @@ def _profile(user: User) -> dict:
             "role": user.user_role.value, "student_code": getattr(user, "student_code", ""),
             "phone": meta.get("phone", ""), "picture": meta.get("picture", ""),
             "has_private_ev": bool(getattr(user, "has_private_ev", False)),
-            "onboarded": bool(meta.get("onboarded", True))}
+            "onboarded": bool(meta.get("onboarded", True)),
+            "has_password": bool(meta.get("password_hash")), "has_google": bool(meta.get("google_sub"))}
 
 
 @router.get("/api/me", tags=["Auth"])
