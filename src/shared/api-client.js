@@ -9,7 +9,8 @@
  * - HTTP 401 (missing / expired / forged token) clears the session and redirects to /app/login.html.
  * - Unfinished backend endpoints return 501 {owner, use_case}; the client surfaces it as err.todo.
  *
- * Login helpers:  API.loginGoogle(credential) | API.login(email)  (demo accounts, DEMO_MODE only)
+ * Login helpers:  API.loginPassword(email, password) | API.register({full_name, email, password})
+ *                 API.loginGoogle(credential) | API.login(email)  (demo accounts, DEMO_MODE only)
  *                 API.config() -> {google_client_id, demo_mode, demo_accounts}
  *                 API.homeFor(session) -> first page for that role (onboarding for new students)
  */
@@ -62,6 +63,8 @@ const API = (() => {
     patch: (p, b) => request('PATCH', p, b),
     config: () => request('GET', '/api/auth/config'),
     async login(email) { const s = await request('POST', '/api/auth/demo-login', { email }); setSession(s); return s; },
+    async loginPassword(email, password) { const s = await request('POST', '/api/auth/login', { email, password }); setSession(s); return s; },
+    async register(data) { const s = await request('POST', '/api/auth/register', data); setSession(s); return s; },
     async loginGoogle(credential) { const s = await request('POST', '/api/auth/google', { credential }); setSession(s); return s; },
     async refreshProfile() {
       const me = await request('GET', '/api/me');

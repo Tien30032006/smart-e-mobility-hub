@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id TEXT PRIMARY KEY, role TEXT NOT NULL, full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE COLLATE NOCASE, student_code TEXT DEFAULT '', operator_id TEXT DEFAULT '',
     phone TEXT DEFAULT '', has_private_ev INTEGER DEFAULT 0, google_sub TEXT, picture TEXT DEFAULT '',
-    onboarded INTEGER DEFAULT 0, created_at TEXT
+    onboarded INTEGER DEFAULT 0, created_at TEXT, password_hash TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS hubs (
     hub_id TEXT PRIMARY KEY, name TEXT NOT NULL, lat REAL, lng REAL, capacity INTEGER NOT NULL
@@ -150,8 +150,15 @@ class Persistence:
                 self._conn.execute("PRAGMA journal_mode=WAL")
                 self._conn.execute("PRAGMA synchronous=NORMAL")
             self._conn.executescript(SCHEMA)
+            self._migrate()
             self._hashes.clear()
             self._known_events = set()
+
+    def _migrate(self) -> None:
+        """Upgrade a database file created by an older version (adds missing columns)."""
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(users)")}
+        if "password_hash" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT DEFAULT ''")
 
     def close(self) -> None:
         with self._io_lock:
@@ -204,6 +211,7 @@ class Persistence:
                 "phone": extra.get("phone", ""), "has_private_ev": int(getattr(u, "has_private_ev", False)),
                 "google_sub": extra.get("google_sub"), "picture": extra.get("picture", ""),
                 "onboarded": int(extra.get("onboarded", True)), "created_at": extra.get("created_at"),
+                "password_hash": extra.get("password_hash", ""),
             })
         for h in n.hubs.values():
             hubs.append({"hub_id": h.hub_id, "name": h.name, "lat": h.location.get("lat"),
@@ -380,7 +388,8 @@ class Persistence:
             user = Student(user_id=r["user_id"], full_name=r["full_name"], email=r["email"],
                            student_code=r["student_code"] or "", has_private_ev=bool(r["has_private_ev"]))
         user._db = {"phone": r["phone"] or "", "google_sub": r["google_sub"], "picture": r["picture"] or "",
-                    "onboarded": bool(r["onboarded"]), "created_at": r["created_at"]}
+                    "onboarded": bool(r["onboarded"]), "created_at": r["created_at"],
+                    "password_hash": r["password_hash"] or ""}
         return user
 
     # ---- maintenance ---------------------------------------------------------
