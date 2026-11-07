@@ -186,7 +186,7 @@
             </label>
           </div>
           <button id="btn-submit-vehicle" class="button" style="width:100%;">
-            ${Hub.icon('zap')} <span data-i18n="reserve.btnConfirmVehicle">Confirm & Pay Deposit (50,000 VND)</span>
+            <i data-lucide="zap"></i> <span data-i18n="reserve.btnConfirmVehicle">Confirm & Pay Deposit (50,000 VND)</span>
           </button>
         </div>
 
@@ -212,7 +212,7 @@
             </select>
           </div>
           <button id="btn-submit-parking" class="button" style="width:100%;">
-            ${Hub.icon('parking')} <span data-i18n="reserve.btnConfirmParking">Confirm Dock Reservation</span>
+            <i data-lucide="square-parking"></i> <span data-i18n="reserve.btnConfirmParking">Confirm Dock Reservation</span>
           </button>
         </div>
       </div>
@@ -402,7 +402,7 @@
           <div style="display:flex; flex-direction:column; gap:10px;">
             ${isVehicle && res.status === 'confirmed' ? `
               <button id="btn-open-unlock" class="button" style="width:100%;">
-                ${Hub.icon('zap')} ${Hub.esc(Hub.t('reserve.pickupBtn'))}
+                <i data-lucide="zap"></i> ${Hub.esc(Hub.t('reserve.pickupBtn'))}
               </button>
             ` : ''}
             <button id="btn-cancel-res" class="button secondary" style="width:100%;">
@@ -527,6 +527,10 @@
     };
 
     loadHubsAndState();
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    lucide.createIcons();
   </script>
 </body>
 </html>

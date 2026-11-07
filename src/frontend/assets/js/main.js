@@ -123,7 +123,11 @@ const Hub = (() => {
   function init() {
     const s = API.session();
     const need = document.body.dataset.role || 'any';
-    if (need !== 'any' && (!s || s.role !== need)) { location.href = '/app/index.html'; return null; }
+    if (need !== 'any' && !s) { API.toLogin(); return null; }
+    if (need !== 'any' && s.role !== need) { location.href = API.homeFor(s); return null; }
+    if (need === 'student' && s.onboarded === false && !location.pathname.endsWith('/onboarding.html')) {
+      location.href = '/app/onboarding.html'; return null;
+    }
     if (!document.querySelector('.skip-link')) {
       const a = document.createElement('a');
       a.className = 'skip-link'; a.href = '#main'; a.dataset.i18n = 'common.skip';
@@ -158,5 +162,38 @@ const Hub = (() => {
         return `<button type="button" class="pin ${tn}" data-hub="${esc(h.hub_id)}" aria-pressed="${selected === h.hub_id}" style="left:${x}%;top:${y}%"><span class="tag"><b>${esc(I18n.hubName(h))}</b><span>${labelFn(h)}</span></span><span class="dot"></span></button>`; }).join('') +
       '<span class="note">' + esc(t('page.findHub.mapNote')) + '</span></div>';
   }
-  return { init, render, esc, icon, t, countUp, tone, mapHtml };
+  /* ---------- Toast + confirm modal (shared components, TV5) ---------- */
+  function toast(message, kind) {
+    let box = document.getElementById('toasts');
+    if (!box) { box = document.createElement('div'); box.id = 'toasts'; box.className = 'toasts'; box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); document.body.appendChild(box); }
+    const el = document.createElement('div');
+    el.className = 'toast ' + (kind || 'info');
+    el.textContent = message;
+    box.appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 4500);
+    while (box.children.length > 4) box.firstChild.remove();
+  }
+  function confirmDialog(title, body, okLabel) {
+    return new Promise(resolve => {
+      const back = document.createElement('div');
+      back.className = 'modal-backdrop';
+      back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mdl-t"><h2 id="mdl-t">${esc(title)}</h2><p>${esc(body || '')}</p>` +
+        `<div class="actions"><button type="button" class="secondary" data-x="0">${esc(t('common.cancel'))}</button><button type="button" data-x="1">${esc(okLabel || t('common.confirm'))}</button></div></div>`;
+      const done = v => { back.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+      const onKey = e => { if (e.key === 'Escape') done(false); };
+      back.addEventListener('click', e => { if (e.target === back) done(false); const b = e.target.closest('[data-x]'); if (b) done(b.dataset.x === '1'); });
+      document.addEventListener('keydown', onKey);
+      document.body.appendChild(back);
+      back.querySelector('[data-x="1"]').focus();
+    });
+  }
+  /* Small live/polling indicator for the top bar; call once on pages that use Stream. */
+  function liveBadge() {
+    if (typeof Stream === 'undefined') return;
+    let b = document.getElementById('live-badge');
+    if (!b) { b = document.createElement('span'); b.id = 'live-badge'; b.className = 'live-badge'; (document.getElementById('nav') || document.body).appendChild(b); }
+    Stream.onStatus(st => { b.dataset.state = st; b.textContent = t('live.' + st); });
+    document.addEventListener('langchange', () => { b.textContent = t('live.' + (Stream.status || 'idle')); });
+  }
+  return { init, render, esc, icon, t, countUp, tone, mapHtml, toast, confirmDialog, liveBadge };
 })();

@@ -248,3 +248,45 @@ td .mini { display: block; height: 6px; width: 90px; margin-top: 6px; background
 
 nav .brand .t { display: flex; flex-direction: column; line-height: 1.15; }
 nav .brand small { display: block; font-size: 11px; font-weight: 500; opacity: .75; }
+
+/* =====================================================================
+   Shared components added by TV5: toast, modal, bottom sheet, progress ring,
+   live badge, login / onboarding forms. All colours come from the tokens above.
+   ===================================================================== */
+.toasts { position: fixed; z-index: 200; right: 16px; top: 72px; display: grid; gap: 8px; width: min(360px, calc(100vw - 32px)); pointer-events: none; }
+body.shell-student .toasts { top: auto; bottom: 84px; right: 16px; left: 16px; width: auto; }
+.toast { pointer-events: auto; padding: 12px 16px; border-radius: 12px; background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-left-width: 6px; box-shadow: var(--shadow-lg); font-weight: 600; animation: toast-in .2s ease; }
+.toast.info { border-left-color: var(--info); } .toast.ok { border-left-color: var(--brand); }
+.toast.warn { border-left-color: var(--warn-line); } .toast.bad { border-left-color: var(--danger); }
+.toast.out { opacity: 0; transform: translateY(-6px); transition: .25s; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
+
+.modal-backdrop { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px; background: rgb(8 24 18 / .55); }
+.modal { width: min(440px, 100%); background: var(--surface); color: var(--ink); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); }
+.modal h2 { margin: 0 0 8px; } .modal p { color: var(--muted); margin: 0 0 20px; }
+.modal .actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+.sheet { position: fixed; z-index: 90; left: 0; right: 0; bottom: 64px; max-height: 70vh; overflow: auto; background: var(--surface); border-radius: 22px 22px 0 0; border: 1px solid var(--line); box-shadow: var(--shadow-lg); padding: 8px 18px 20px; transition: transform .25s ease; }
+.sheet::before { content: ""; display: block; width: 44px; height: 5px; margin: 6px auto 12px; border-radius: 999px; background: var(--line); }
+.sheet[hidden] { display: block; transform: translateY(110%); visibility: hidden; }
+
+.progress { height: 12px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.progress > i { display: block; height: 100%; width: var(--p, 0%); background: var(--brand); border-radius: inherit; transition: width .6s ease; }
+.progress.warn > i { background: var(--warn-line); } .progress.bad > i { background: var(--danger); }
+.ring { --p: 0; width: 120px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 24px; font-variant-numeric: tabular-nums;
+  background: radial-gradient(closest-side, var(--surface) 76%, transparent 78% 100%), conic-gradient(var(--brand) calc(var(--p) * 1%), var(--line) 0); }
+
+.live-badge { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--brand-soft); color: var(--brand-strong); }
+.live-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.live-badge[data-state="live"]::before { animation: pulse 1.6s infinite; }
+.live-badge[data-state="polling"], .live-badge[data-state="reconnecting"] { background: var(--warn-soft); color: var(--warn); }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .live-badge::before, .toast { animation: none; } .progress > i, .sheet { transition: none; } }
+
+.auth-card { max-width: 460px; margin: 28px auto; }
+.auth-card h1 { margin: 0 0 6px; } .auth-or { display: flex; align-items: center; gap: 12px; color: var(--muted); margin: 22px 0 12px; font-size: 13px; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+#google-btn { min-height: 44px; display: flex; justify-content: center; }
+.form-grid { display: grid; gap: 4px; } .form-grid input { width: 100%; } .field-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 4px; }
+.steps { display: flex; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+.steps li { flex: 1; height: 6px; border-radius: 999px; background: var(--line); } .steps li.done { background: var(--brand); }

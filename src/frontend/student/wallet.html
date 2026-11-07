@@ -99,7 +99,7 @@
           <input type="number" id="inp-custom-amount" value="50000" min="10000" step="10000" style="width:100%; padding:10px 14px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink);">
         </div>
         <button id="btn-submit-topup" class="button" style="width:100%;">
-          ${Hub.icon('zap')} Top Up via Mock Checkout
+          <i data-lucide="zap"></i> Top Up via Mock Checkout
         </button>
       </div>
     </div>
@@ -225,6 +225,11 @@
     };
 
     loadWallet();
+  </script>
+  <!-- Bổ sung thư viện Lucide để render icon -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    lucide.createIcons();
   </script>
 </body>
 </html>

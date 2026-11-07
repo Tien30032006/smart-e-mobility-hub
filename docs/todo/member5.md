@@ -45,3 +45,15 @@ In addition, like every other member, Member 5 must still submit **individual** 
 - [ ] Update the "overlaps" table in `TEAM_TODO.md` whenever a new agreement is made
 - [ ] Organize an integration session ≥ 1 week before the demo, plus demo rehearsals
 - [ ] End-of-term peer evaluation
+
+
+## D. Pipeline-demo foundation (done in code - tick after the team reviews)
+- [x] `core/auth.py` JWT (HS256), same `require_student/require_operator` signatures; `POST /api/auth/google`, `/api/auth/demo-login`, `GET/PATCH /api/me`
+- [x] `login.html`, `onboarding.html`, `shared/api-client.js` (Bearer JWT, 401 -> login), `shared/stream.js` (SSE + polling fallback)
+- [x] `core/simulator.py` (seeded, asyncio), telemetry-cut switches, `core/stream.py` + `GET /api/stream`
+- [x] SQLite persistence (`core/database.py`, [docs/database.md](../database.md)), `POST /api/demo/reset`
+- [x] Toast / modal / bottom-sheet / progress components, EN+VI keys `auth.*`, `live.*`
+- [x] `.env.example`, `scripts/run_demo.sh`, `scripts/reset_demo.sh`, tests: `test_auth`, `test_persistence`, `test_stream_simulator`, `test_e2e_demo`, `tests_js/client.test.js`
+- [ ] Create the Google OAuth Client ID, add `http://localhost:8000` + the HTTPS tunnel URL, put it in `.env` (cannot be done in code)
+- [ ] Ask TV2/TV3/TV4 to register their stores in `core/demo.py` (alerts, incidents, relocation orders, charging audit, simulation results)
+- [ ] Rehearse 3x with `scripts/reset_demo.sh`; test on a real phone through the tunnel

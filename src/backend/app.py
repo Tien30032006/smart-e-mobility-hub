@@ -5,17 +5,29 @@ Run from the project root:
 Swagger UI: http://localhost:8000/docs      Frontend: http://localhost:8000/app/
 
 Unfinished endpoints answer HTTP 501 with the owner + use case (see core/todo.py).
+
+Startup (lifespan): connect SQLite -> restore the last saved state (or seed the demo data)
+-> wire the event bus to SSE -> start the simulator and the periodic database flush.
 """
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
-from .core import auth
+from .core.api_shared import router as shared_router
+from .core.config import settings
+from .core.database import persistence
+from .core.demo import register_persisted_stores
+from .core.event_bus import bus
+from .core.logger import get_logger
+from .core.simulator import simulator
 from .core.state_manager import HubNotFound, VehicleNotFound, network
+from .core.stream import stream_hub
 from .core.todo import NotImplementedYet
 from .data.seed_data import seed_network
 from .modules.charging.routes import router as charging_router
@@ -24,15 +36,70 @@ from .modules.reservation.routes import router as reservation_router
 from .modules.simulation.routes import router as simulation_router
 
 SRC_DIR = Path(__file__).resolve().parents[1]
+log = get_logger("app")
+MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
+PAYMENT_PATHS = ("/api/wallet", "/api/payments")
+DOMAIN_PATHS = ("/api/reservation", "/api/charging", "/api/operator", "/api/operations", "/api/simulation")
 
 
-class LoginIn(BaseModel):
-    email: str
+def restore_or_seed() -> str:
+    """Load the saved state from SQLite, or seed the demo data and save it. Returns 'restored'|'seeded'."""
+    register_persisted_stores()
+    if settings.persistence_enabled:
+        persistence.connect(settings.database_path)
+        if persistence.load():
+            return "restored"
+    seed_network()
+    persistence.flush()
+    return "seeded"
+
+
+def _wire_modules() -> None:
+    """Hook module-owned handlers into the bus (each is optional until its owner finishes it)."""
+    stream_hub.attach()
+    try:
+        from .modules.charging import telemetry
+        telemetry.register_simulator_handlers()
+    except Exception:  # noqa: BLE001
+        log.exception("charging telemetry handlers not registered")
+    try:
+        from .modules.operations import service as ops_service
+        ops_service.register_event_handlers()
+    except NotImplementedYet:
+        log.warning("operations.register_event_handlers is still a TODO (TV3)")
+    except Exception:  # noqa: BLE001
+        log.exception("operations handlers not registered")
+
+
+async def _flush_loop() -> None:
+    while True:
+        await asyncio.sleep(max(1.0, settings.persist_interval_seconds))
+        try:
+            await run_in_threadpool(persistence.flush)
+        except Exception:  # noqa: BLE001
+            log.exception("periodic database flush failed")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    stream_hub.bind_loop(asyncio.get_running_loop())
+    mode = restore_or_seed()
+    log.info("state %s (database=%s)", mode, settings.database_path if settings.persistence_enabled else "off")
+    _wire_modules()
+    flusher = asyncio.create_task(_flush_loop()) if persistence.enabled else None
+    simulator.start()
+    yield
+    await simulator.stop()
+    if flusher:
+        flusher.cancel()
+    if persistence.enabled:
+        await run_in_threadpool(persistence.flush)
+        persistence.close()
 
 
 def create_app() -> FastAPI:
     seed_network()
-    app = FastAPI(title="Smart E-Mobility Hub", version="0.1.0")
+    app = FastAPI(title="Smart E-Mobility Hub", version="0.2.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
     @app.exception_handler(NotImplementedYet)
@@ -52,15 +119,9 @@ def create_app() -> FastAPI:
     # ---- shared endpoints ---------------------------------------------------
     @app.get("/api/health", tags=["Shared"])
     def health():
-        return {"status": "ok", "hubs": len(network.hubs), "vehicles": len(network.vehicles)}
-
-    @app.post("/api/auth/login", tags=["Shared"])
-    def login(body: LoginIn):
-        user = auth.login(body.email)
-        if user is None:
-            raise HTTPException(status_code=401, detail="Unknown e-mail")
-        return {"token": user.user_id, "user_id": user.user_id, "full_name": user.full_name,
-                "role": user.user_role.value}
+        return {"status": "ok", "hubs": len(network.hubs), "vehicles": len(network.vehicles),
+                "database": persistence.enabled, "demo_mode": settings.demo_mode,
+                "simulator": simulator.enabled, "stream_clients": stream_hub.subscriber_count}
 
     @app.get("/api/hubs", tags=["Shared"])
     def hubs():
@@ -74,10 +135,28 @@ def create_app() -> FastAPI:
     def network_status():
         return network.get_network_status()
 
+    app.include_router(shared_router)
     app.include_router(reservation_router)
     app.include_router(charging_router)
     app.include_router(operations_router)
     app.include_router(simulation_router)
+
+    @app.middleware("http")
+    async def persist_and_notify(request: Request, call_next):
+        """After every successful write: save to SQLite and tell SSE clients to refresh."""
+        response = await call_next(request)
+        path = request.url.path
+        if request.method in MUTATING and response.status_code < 400 and path.startswith("/api/"):
+            if persistence.enabled:
+                try:
+                    await run_in_threadpool(persistence.flush)
+                except Exception:  # noqa: BLE001 - never fail a request because of the audit copy
+                    log.exception("database flush failed")
+            if path.startswith(PAYMENT_PATHS):
+                stream_hub.publish("payment_updated", {"path": path})
+            elif path.startswith(DOMAIN_PATHS):
+                stream_hub.publish("hub_updated", {"hub_id": None, "reason": "http"})
+        return response
 
     @app.middleware("http")
     async def no_cache_for_frontend(request: Request, call_next):

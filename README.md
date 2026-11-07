@@ -278,3 +278,14 @@ Full, interactive reference: **`/docs`** while the server is running.
 ## 📄 License
 
 Released under the [MIT License](LICENSE).
+
+
+## Run the demo (TV5 foundation)
+```bash
+scripts/run_demo.sh [--fresh] [--tunnel]      # venv + deps + .env + server on :8000
+# open http://localhost:8000/app/login.html
+```
+* **Login**: Google Sign-In (set `GOOGLE_CLIENT_ID`) or demo accounts when `DEMO_MODE=true`.
+* **Data**: persisted in SQLite (`data/hub.db`), see `docs/database.md`; `scripts/reset_demo.sh` returns to the seed data.
+* **Realtime**: the simulator moves battery / hub occupancy / charger faults; browsers receive them over SSE (`/api/stream`).
+* **Tests**: `pytest` (backend) and `node tests_js/client.test.js` (frontend client).
