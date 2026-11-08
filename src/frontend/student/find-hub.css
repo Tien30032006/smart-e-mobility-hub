@@ -1,0 +1,41 @@
+/* U1 find-hub: real Leaflet map + distance list.  OWNER: Member 1 */
+.geo-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: end; margin: 14px 0 6px; }
+.geo-bar > button { min-height: 44px; white-space: nowrap; }
+.geo-from { font-size: 13px; color: var(--muted); margin-bottom: 8px; min-height: 18px; }
+.geo-from b { color: var(--ink); }
+.origin-search { min-width: 0; }
+.origin-search .field-label { display: block; margin: 0 0 5px; }
+.origin-search > input { width: 100%; min-height: 44px; }
+.origin-search .geocoder-credit { display: block; margin: 4px 2px 0; color: var(--muted); font-size: 10px; }
+.autocomplete { position: relative; z-index: 20; }
+.autocomplete-list { position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: 280px; overflow: auto; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow, 0 12px 30px rgba(15, 45, 35, .16)); z-index: 1200; }
+.autocomplete-list[hidden] { display: none; }
+#origin-search .autocomplete-list { top: 68px; }
+.autocomplete-list [role="option"] { display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 12px; border: 0; border-radius: 9px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; }
+.autocomplete-list [role="option"]:hover, .autocomplete-list [role="option"][aria-selected="true"] { background: var(--brand-soft); }
+.autocomplete-list [role="option"] small, .autocomplete-message { color: var(--muted); font-size: 12px; font-weight: 500; }
+.autocomplete-message { padding: 11px 12px; }
+.map-wrap { position: relative; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); isolation: isolate; }
+#leaflet-map { width: 100%; height: 34vh; min-height: 240px; max-height: 380px; z-index: 0; background: var(--map); }
+.map-hint { position: absolute; left: 10px; bottom: 10px; z-index: 500; background: var(--surface); color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 10px; box-shadow: var(--shadow); pointer-events: none; }
+.geo-notice { background: var(--warn-soft); color: var(--warn); font-size: 13px; padding: 10px 14px; border-radius: 12px; margin: 8px 0; }
+.geo-notice[hidden] { display: none; }
+.route-info { font-size: 13px; font-weight: 600; color: var(--brand-strong); margin: 8px 2px 0; min-height: 18px; }
+.geo-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 12px 0 0; }
+.geo-tools .seg button { min-height: 36px; }
+.geo-pick { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.geo-pick select { width: 100%; }
+.hubrow { cursor: pointer; }
+.hubrow[aria-current="true"] { box-shadow: 0 0 0 2px var(--brand); }
+.hubrow .dist { text-align: right; flex: none; font-weight: 800; font-size: 15px; line-height: 1.2; }
+.hubrow .dist small { display: block; font-weight: 600; font-size: 12px; color: var(--muted); }
+.hubrow .route-times { display: grid; gap: 2px; white-space: nowrap; text-align: right; }
+.hubrow .route-electric { display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; color: var(--brand-strong); }
+.hubrow .route-electric .icon { width: 12px; height: 12px; }
+.route-info:empty { display: none; }
+.route-info:not(:empty) { border-radius: 12px; background: var(--brand-soft); padding: 10px 12px; line-height: 1.45; }
+.hubrow .go { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; text-decoration: none; }
+.hub-list-toggle { width: 100%; min-height: 46px; margin: 4px 0 12px; border-radius: 14px; }
+.hubrow .kind { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.leaflet-container { font-family: inherit; }
+@media (max-width: 520px) { .geo-bar { grid-template-columns: minmax(0, 1fr); gap: 8px; } .geo-bar > button { justify-self: end; } }

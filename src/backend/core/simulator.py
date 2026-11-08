@@ -36,7 +36,8 @@ log = get_logger("simulator")
 # Hour-of-day -> demand multiplier (fake campus rhythm: 7-9h and 16-19h are peaks).
 RUSH_PROFILE = {h: 0.3 for h in range(24)}
 RUSH_PROFILE.update({7: 1.0, 8: 1.0, 9: 0.7, 11: 0.6, 12: 0.6, 16: 0.9, 17: 1.0, 18: 1.0, 19: 0.6})
-HUB_BIAS = {"HUB-METRO": 1.6, "HUB-CAMPUS": 1.0, "HUB-KTX": 0.9, "HUB-LIB": 0.6}
+HUB_BIAS = {"HUB-METRO": 1.6, "HUB-CAMPUS": 1.0, "HUB-KTX": 0.9, "HUB-LIB": 0.6,
+            "HUB-KTXB": 0.9, "HUB-BK1": 1.0, "HUB-HOAHAO": 0.7, "HUB-MT-BENTHANH": 1.2, "HUB-MT-SUOITIEN": 1.4}
 
 
 class Simulator:

@@ -1,101 +1,110 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title data-i18n="page.incidents.title">Incident Handling</title>
+  <title data-i18n="page.incidents.title">Cảnh báo & sự cố</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
-  <style>
-    .inc-form { display:grid; gap:12px; margin-top:12px; max-width:560px; }
-    .inc-form label { display:flex; flex-direction:column; gap:6px; }
-    .inc-actions { display:flex; gap:10px; flex-wrap:wrap; }
-    #panel:empty { display:none; }
-  </style>
+  <link rel="stylesheet" href="incidents.css">
 </head>
 <body data-role="operator">
-  <!-- OWNER: Member 3   USE CASES: UC05, UC-OP06, UC-OP07
-       Data: GET /api/operator/incidents, GET .../{id}/impact, POST .../{id}/handle, POST .../{id}/resolve -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head pagebar">
-      <div><h1 data-i18n="page.incidents.title"></h1><p class="muted" data-i18n="page.incidents.desc"></p></div>
-      <div class="seg" id="filter" role="group"></div>
+      <div><p class="eyebrow" data-i18n="ops.breadcrumb"></p><h1 data-i18n="page.incidents.title">Cảnh báo & sự cố</h1><p class="muted" data-i18n="page.incidents.desc"></p></div>
+      <button type="button" class="secondary" id="refresh-incidents"></button>
     </header>
-    <section id="panel" class="card" aria-live="polite"></section>
-    <div id="app"></div>
+    <section id="incident-kpis" class="incident-kpis" aria-label="Incident summary"></section>
+    <section class="card incident-workspace">
+      <div class="incident-list-panel">
+        <div class="incident-filters" role="group" aria-label="Incident filters">
+          <button type="button" class="secondary" data-filter="open" aria-pressed="true"></button>
+          <button type="button" class="secondary" data-filter="in_maintenance" aria-pressed="false"></button>
+          <button type="button" class="secondary" data-filter="all" aria-pressed="false"></button>
+        </div>
+        <div id="incident-list" class="incident-list" aria-live="polite"></div>
+      </div>
+      <section id="incident-detail" class="incident-detail" aria-live="polite"></section>
+    </section>
+    <section class="card incident-history">
+      <div class="pagebar"><div><h2 data-i18n="incident.historyTitle"></h2><p class="muted" data-i18n="incident.historyHelp"></p></div><span id="history-count" class="badge"></span></div>
+      <div id="incident-history-table" class="tablewrap"></div>
+    </section>
   </main>
   <script src="/shared/api-client.js"></script>
-  <script src="/shared/stream.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
-    Hub.init(); Hub.liveBadge();
-    const E = Hub.esc, T = (k, v) => E(Hub.t(k, v)), $ = id => document.getElementById(id);
-    const TONE = { open: 'bad', in_maintenance: 'warn', resolved: '' };
-    let filter = 'active', rows = [], hubs = {}, selected = null;
-    const hubName = id => hubs[id] ? I18n.hubName(hubs[id]) : (id || '—');
-    const when = iso => new Date(iso).toLocaleString(I18n.lang);
-
-    function drawFilter() {
-      $('filter').setAttribute('aria-label', Hub.t('page.incidents.title'));
-      $('filter').innerHTML = ['active', 'all'].map(f => `<button type="button" data-f="${f}" aria-pressed="${filter === f}">${T('inc.filter.' + f)}</button>`).join('');
-      $('filter').querySelectorAll('button').forEach(b => b.onclick = () => { filter = b.dataset.f; selected = null; load(); });
+    Hub.init();
+    let rows = [], selectedId = '', activeFilter = 'open';
+    const $ = id => document.getElementById(id), esc = Hub.esc;
+    const categoryKeys = { brake_failure:'issue.catBrake', battery_danger:'issue.catBattery', flat_tire:'issue.catTire', dock_jam:'issue.catDock', other:'issue.catOther' };
+    const impactKeys = { vehicle:'incident.impactVehicle', charging_point:'incident.impactPort', parking_space:'incident.impactDock' };
+    function category(row) { return Hub.t(categoryKeys[row.category] || 'issue.catOther'); }
+    function severityKey(row) { return 'incident.severity.' + (row.severity || (row.status === 'open' ? 'warning' : 'info')); }
+    function description(row) { return row.demo_case ? Hub.t('incident.demo.' + row.demo_case) : (row.description || Hub.t('incident.descriptionMissing')); }
+    function renderKpis() {
+      const opened = rows.filter(row => row.status === 'open');
+      const cards = [
+        ['critical', opened.filter(row => row.severity === 'critical').length, 'incident.kpiCritical', 'incident.kpiCriticalHint'],
+        ['warning', opened.filter(row => row.severity === 'warning').length, 'incident.kpiWarning', 'incident.kpiWarningHint'],
+        ['info', rows.length, 'incident.kpiEvents', 'incident.kpiEventsHint'],
+      ];
+      $('incident-kpis').innerHTML = cards.map(([tone, count, title, hint]) => `<article class="card incident-kpi ${tone}"><div class="incident-kpi-top"><span class="severity-dot"></span><span>${esc(Hub.t(title))}</span></div><b>${count}</b><small>${esc(Hub.t(hint))}</small></article>`).join('');
     }
-    function drawPanel() {
-      const inc = rows.find(r => r.incident_id === selected);
-      if (!inc || inc.status !== 'open') { $('panel').innerHTML = ''; return; }
-      $('panel').innerHTML = `<h2 style="margin-top:0">${T('inc.form')} · ${E(inc.target_id)}</h2>
-        <p class="muted">${T('inc.type.' + inc.target_type)} · ${E(hubName(inc.hub_id))} · ${E(inc.category)}</p>
-        ${inc.description ? `<p>${E(inc.description)}</p>` : ''}
-        <form class="inc-form" id="hform">
-          <label>${T('inc.priority')}<select name="priority">${['low', 'medium', 'high', 'critical'].map(p => `<option value="${p}"${p === 'medium' ? ' selected' : ''}>${T('inc.priority.' + p)}</option>`).join('')}</select></label>
-          <label>${T('inc.note')}<textarea name="note" rows="3" maxlength="500"></textarea></label>
-          <div class="inc-actions"><button type="submit">${T('inc.submit')}</button><button type="button" class="secondary" id="hcancel">${T('common.cancel')}</button></div>
-        </form>`;
-      $('hcancel').onclick = () => { selected = null; drawPanel(); };
-      $('hform').onsubmit = async ev => {
-        ev.preventDefault();
-        const f = ev.target.elements, body = { note: f.note.value, priority: f.priority.value, confirm_cancel: false };
-        const btn = ev.submitter; btn.disabled = true;
-        try {
-          const impact = await API.get(`/api/operator/incidents/${encodeURIComponent(inc.incident_id)}/impact`);
-          if (impact.blocked_reason) throw new Error(impact.blocked_reason);
-          if (impact.requires_confirmation) {                       // UC05 alt 5a
-            const ok = await Hub.confirmDialog(Hub.t('inc.reservedTitle'), Hub.t('inc.reservedBody', { n: impact.affected_reservations.length }));
-            if (!ok) { btn.disabled = false; return; }
-            body.confirm_cancel = true;
-          }
-          const out = await API.post(`/api/operator/incidents/${encodeURIComponent(inc.incident_id)}/handle`, body);
-          Hub.toast(Hub.t('inc.handled', { id: out.ticket.ticket_id }) + (out.cancelled_reservations.length ? ' · ' + Hub.t('inc.cancelledN', { n: out.cancelled_reservations.length }) : ''), 'ok');
-          selected = null; await load();
-        } catch (err) { Hub.toast(err.message, 'error'); btn.disabled = false; }
-      };
+    function renderList(filtered) {
+      $('incident-list').innerHTML = filtered.length ? filtered.map(row => `<button type="button" class="incident-item ${selectedId === row.incident_id ? 'selected' : ''}" data-select="${esc(row.incident_id)}" aria-current="${selectedId === row.incident_id}">
+        <span class="incident-item-top"><span class="badge ${row.severity === 'critical' ? 'bad' : row.severity === 'warning' ? 'warn' : 'info'}">${esc(Hub.t(severityKey(row)))}</span><span class="badge ${row.status === 'open' ? 'warn' : ''}">${esc(statusLabel(row.status))}</span></span>
+        <b>${esc(row.target_id)} · ${esc(category(row))}</b><span>${esc(I18n.hubName({hub_id:row.hub_id}))} · ${esc(new Date(row.created_at).toLocaleTimeString(I18n.lang, {hour:'2-digit',minute:'2-digit'}))}</span>
+        <small>${esc(description(row))}</small>
+      </button>`).join('') : `<div class="incident-empty"><span class="incident-empty-icon">✓</span><b>${esc(Hub.t('incident.empty'))}</b><small>${esc(Hub.t('incident.noOpenHint'))}</small></div>`;
+      $('incident-list').querySelectorAll('[data-select]').forEach(button => button.onclick = () => { selectedId = button.dataset.select; draw(); });
     }
-    function draw(list) {
-      rows = list; drawFilter(); drawPanel();
-      if (!rows.length) { $('app').innerHTML = `<div class="card"><p class="muted">${T('inc.empty')}</p></div>`; return; }
-      $('app').innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('inc.col.device')}</th><th>${T('inc.col.hub')}</th><th>${T('inc.col.category')}</th><th>${T('inc.col.reports')}</th><th>${T('inc.col.status')}</th><th>${T('inc.col.when')}</th><th>${T('inc.col.action')}</th></tr></thead><tbody>` +
-        rows.map(i => `<tr class="${i.incident_id === selected ? 'sel' : ''}">
-          <td><b>${E(i.target_id)}</b><br><span class="muted">${T('inc.type.' + i.target_type)} · ${T('inc.source.' + i.source)}</span></td>
-          <td>${E(hubName(i.hub_id))}</td><td>${E(i.category)}</td><td>${i.report_count}</td>
-          <td><span class="badge ${TONE[i.status] || ''}">${T('inc.status.' + i.status)}</span>${i.ticket ? `<br><span class="muted">${T('inc.ticket')} ${E(i.ticket.ticket_id)} · ${T('inc.priority.' + i.ticket.priority)}</span>` : ''}</td>
-          <td>${E(when(i.created_at))}</td>
-          <td>${i.status === 'open' ? `<button type="button" data-h="${E(i.incident_id)}">${T('inc.handle')}</button>`
-              : i.status === 'in_maintenance' ? `<button type="button" class="secondary" data-r="${E(i.incident_id)}">${T('inc.resolve')}</button>` : '—'}</td></tr>`).join('') + '</tbody></table></div>';
-      $('app').querySelectorAll('[data-h]').forEach(b => b.onclick = () => { selected = b.dataset.h; drawPanel(); draw(rows); $('panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-      $('app').querySelectorAll('[data-r]').forEach(b => b.onclick = async () => {
-        b.disabled = true;
-        try { await API.post(`/api/operator/incidents/${encodeURIComponent(b.dataset.r)}/resolve`); Hub.toast(Hub.t('inc.resolvedMsg'), 'ok'); await load(); }
-        catch (err) { Hub.toast(err.message, 'error'); b.disabled = false; }
+    function statusLabel(status) { return status === 'open' ? Hub.t('incident.status.open') : status === 'in_maintenance' ? Hub.t('incident.status.handled') : (I18n.lang === 'vi' ? 'Đã khắc phục' : 'Resolved'); }
+    function renderDetail(row) {
+      const panel = $('incident-detail');
+      if (!row) { panel.innerHTML = `<div class="incident-empty"><b>${esc(Hub.t('incident.selectOne'))}</b></div>`; return; }
+      const assetStatus = row.target_type === 'vehicle' ? Hub.t('incident.assetVehicle') : Hub.t('incident.assetPort');
+      const handledText = statusLabel(row.status);
+      const effects = Hub.t(impactKeys[row.target_type] || 'incident.impactVehicle');
+      panel.innerHTML = `<div class="incident-detail-heading"><div><span class="badge ${row.severity === 'critical' ? 'bad' : row.severity === 'warning' ? 'warn' : 'info'}">${esc(Hub.t(severityKey(row)))}</span><span class="badge ${row.status === 'open' ? 'warn' : ''}">${esc(handledText)}</span></div><code>${esc(row.incident_id)}</code></div>
+        <h2>${esc(category(row))} · ${esc(row.target_id)}</h2><p class="muted">${esc(Hub.t('incident.reportSource'))} · ${esc(new Date(row.created_at).toLocaleString(I18n.lang))}</p>
+        <section class="incident-asset"><div><small>${esc(Hub.t('incident.hubAsset'))}</small><b>${esc(I18n.hubName({hub_id:row.hub_id}))} / ${esc(row.target_id)}</b></div><div><small>${esc(Hub.t('incident.currentStatus'))}</small><b>${esc(row.status === 'open' ? assetStatus : Hub.t('incident.assetMaintenance'))}</b></div></section>
+        <blockquote>${esc(description(row))}</blockquote>
+        <section class="incident-subsection"><h3>${esc(Hub.t('incident.recentActivity'))}</h3><div class="tablewrap"><table><thead><tr><th>${esc(Hub.t('incident.activityTime'))}</th><th>${esc(Hub.t('incident.activity'))}</th><th>${esc(Hub.t('incident.activityResult'))}</th></tr></thead><tbody>
+          <tr><td>${esc(new Date(row.created_at).toLocaleTimeString(I18n.lang,{hour:'2-digit',minute:'2-digit'}))}</td><td>${esc(row.demo ? Hub.t('incident.demoReport') : Hub.t('incident.studentReport'))}</td><td>${esc(Hub.t('incident.status.' + row.status.toLowerCase()))}</td></tr>
+          ${row.handled_at ? `<tr><td>${esc(new Date(row.handled_at).toLocaleTimeString(I18n.lang,{hour:'2-digit',minute:'2-digit'}))}</td><td>${esc(Hub.t('incident.maintenance'))}</td><td>${esc(Hub.t('incident.assetMaintenance'))}</td></tr>` : ''}
+        </tbody></table></div></section>
+        <section class="incident-subsection"><div class="pagebar"><h3>${esc(Hub.t('incident.maintenancePreview'))}</h3><span class="badge ${row.status === 'open' ? 'warn' : ''}">${esc(row.status === 'open' ? Hub.t('incident.notApplied') : Hub.t('incident.applied'))}</span></div><div class="incident-impact"><span>⚠</span><p>${esc(effects)}</p></div><p class="muted incident-help">${esc(Hub.t('incident.maintenanceHelp'))}</p>
+          ${row.status === 'open' ? `<button type="button" class="incident-confirm" data-handle="${esc(row.incident_id)}">${esc(Hub.t('incident.handle'))}</button>` : `<div class="incident-complete">✓ ${esc(Hub.t('incident.applied'))}</div>`}</section>`;
+      panel.querySelector('[data-handle]')?.addEventListener('click', async event => {
+        const button = event.currentTarget; button.disabled = true;
+        try { await API.post('/api/operator/incidents/' + encodeURIComponent(row.incident_id) + '/handle', {}); await load(); }
+        catch (error) { button.disabled = false; alert(Hub.t('incident.error') + ': ' + error.message); }
       });
     }
-    async function load() { draw(await API.get('/api/operator/incidents?status=' + filter)); }
-    (async () => {
-      try { (await API.get('/api/hubs')).forEach(h => hubs[h.hub_id] = h); } catch (e) {}
-      Hub.render($('app'), API.get('/api/operator/incidents?status=' + filter), draw);
-    })();
-    document.addEventListener('langchange', () => draw(rows));
-    ['alert_created', 'hub_updated'].forEach(n => Stream.on(n, () => { if (!selected) load().catch(() => {}); }));
+    function renderHistory() {
+      const handled = rows.filter(row => row.status !== 'open');
+      $('history-count').textContent = String(handled.length);
+      $('incident-history-table').innerHTML = handled.length ? `<table><thead><tr><th>${esc(Hub.t('incident.historyEvent'))}</th><th>${esc(Hub.t('incident.historyAsset'))}</th><th>${esc(Hub.t('incident.historyTime'))}</th><th>${esc(Hub.t('incident.historyResult'))}</th></tr></thead><tbody>${handled.map(row => `<tr><td>${esc(category(row))}</td><td>${esc(row.target_id)} · ${esc(I18n.hubName({hub_id:row.hub_id}))}</td><td>${esc(new Date(row.handled_at || row.created_at).toLocaleString(I18n.lang))}</td><td><span class="badge">${esc(Hub.t('incident.applied'))}</span></td></tr>`).join('')}</tbody></table>` : `<p class="muted incident-history-empty">${esc(Hub.t('incident.noHistory'))}</p>`;
+    }
+    function draw() {
+      const filter = activeFilter;
+      $('refresh-incidents').innerHTML = Hub.icon('refresh') + ' ' + esc(Hub.t('common.refresh'));
+      document.querySelectorAll('[data-filter]').forEach(button => { button.textContent = Hub.t('incident.' + (button.dataset.filter === 'open' ? 'open' : button.dataset.filter === 'in_maintenance' ? 'handled' : 'all')); button.setAttribute('aria-pressed', String(button.dataset.filter === filter)); });
+      renderKpis();
+      const filtered = rows.filter(row => filter === 'all' || (filter === 'in_maintenance' ? row.status !== 'open' : row.status === filter));
+      if (!filtered.some(row => row.incident_id === selectedId)) selectedId = filtered[0]?.incident_id || '';
+      renderList(filtered); renderDetail(rows.find(row => row.incident_id === selectedId)); renderHistory();
+    }
+    async function load() {
+      try { rows = await API.get('/api/operator/incidents?status=all'); draw(); }
+      catch (error) { $('incident-list').textContent = Hub.t('incident.failed') + ': ' + error.message; }
+    }
+    document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => { activeFilter = button.dataset.filter; draw(); });
+    $('refresh-incidents').onclick = load;
+    document.addEventListener('langchange', draw);
+    load();
   </script>
 </body>
 </html>

@@ -48,8 +48,17 @@ def restore_or_seed() -> str:
     if settings.persistence_enabled:
         persistence.connect(settings.database_path)
         if persistence.load():
+            from .data.seed_data import sync_seed_catalog
+            sync_seed_catalog()
+            if settings.demo_mode:
+                from .modules.operations.incident_handler import seed_demo_incidents
+                seed_demo_incidents()
+            persistence.flush()
             return "restored"
     seed_network()
+    if settings.demo_mode:
+        from .modules.operations.incident_handler import seed_demo_incidents
+        seed_demo_incidents()
     persistence.flush()
     return "seeded"
 
@@ -66,7 +75,7 @@ def _wire_modules() -> None:
         from .modules.operations import service as ops_service
         ops_service.register_event_handlers()
     except NotImplementedYet:
-        log.warning("operations.register_event_handlers is still a TODO (TV3)")
+        log.warning("operations event handlers are not ready")
     except Exception:  # noqa: BLE001
         log.exception("operations handlers not registered")
 

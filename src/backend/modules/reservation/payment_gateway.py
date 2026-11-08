@@ -12,9 +12,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import re
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
+from urllib.parse import urlencode
+
+import requests
+from ...core.config import settings
 
 
 class PaymentError(Exception):
@@ -83,36 +89,169 @@ def verify_signature(order_id: str, amount: int, user_id: str, signature: str) -
     return hmac.compare_digest(expected, signature)
 
 
-def create_topup_order(user_id: str, amount: int) -> dict:
+def available_payment_methods() -> list[dict]:
+    """Expose only providers that have the credentials needed for a real checkout."""
+    return [
+        {"id": "vietqr", "configured": bool(os.getenv("VIETQR_BANK_ID") and os.getenv("VIETQR_ACCOUNT_NO") and os.getenv("VIETQR_ACCOUNT_NAME"))},
+        {"id": "momo", "configured": bool(os.getenv("MOMO_PARTNER_CODE") and os.getenv("MOMO_ACCESS_KEY")
+                                             and os.getenv("MOMO_SECRET_KEY") and os.getenv("MOMO_PUBLIC_BASE_URL"))},
+        {"id": "demo", "configured": settings.demo_mode},
+    ]
+
+
+def _topup_checkout_url(order_id: str, method: str, amount: int, user_id: str,
+                        signature: str, qr_payload: str = "", qr_image_url: str = "") -> str:
+    params = {"order_id": order_id, "method": method}
+    if method == "demo":
+        params.update(amount=str(amount), user_id=user_id, signature=signature)
+    if qr_payload:
+        params["qr"] = qr_payload
+    if qr_image_url:
+        params["qr_image"] = qr_image_url
+    return "/app/student/mock-checkout.html?" + urlencode(params)
+
+
+def _make_vietqr(order_id: str, amount: int) -> tuple[str, str, str]:
+    bank_id = os.getenv("VIETQR_BANK_ID", "").strip()
+    account_no = os.getenv("VIETQR_ACCOUNT_NO", "").strip()
+    account_name = os.getenv("VIETQR_ACCOUNT_NAME", "").strip()
+    if not (bank_id and account_no.isdigit() and account_name):
+        raise PaymentError("VietQR receiver account is not configured")
+    reference = "SMH" + uuid.uuid4().hex[:8].upper()
+    clean_name = unicodedata.normalize("NFD", account_name).encode("ascii", "ignore").decode().upper()
+    clean_name = re.sub(r"[^A-Z0-9 ]", "", clean_name).strip()
+    if len(account_no) < 6 or len(account_no) > 19 or not 5 <= len(clean_name) <= 50:
+        raise PaymentError("VietQR account details are invalid")
+    query = urlencode({"amount": str(amount), "addInfo": reference, "accountName": clean_name})
+    image_url = f"https://img.vietqr.io/image/{bank_id}-{account_no}-compact2.png?{query}"
+    return reference, image_url, account_name
+
+
+def _make_momo(order_id: str, amount: int, user_id: str) -> tuple[str, str]:
+    partner_code = os.getenv("MOMO_PARTNER_CODE", "").strip()
+    access_key = os.getenv("MOMO_ACCESS_KEY", "").strip()
+    secret_key = os.getenv("MOMO_SECRET_KEY", "").strip()
+    base_url = os.getenv("MOMO_PUBLIC_BASE_URL", "").strip().rstrip("/")
+    api_base = os.getenv("MOMO_API_BASE", "https://test-payment.momo.vn").strip().rstrip("/")
+    if not (partner_code and access_key and secret_key and base_url.startswith("https://")):
+        raise PaymentError("MoMo merchant credentials and public HTTPS callback URL are not configured")
+    request_id = uuid.uuid4().hex
+    order_info = f"Nap vi {order_id}"
+    redirect_url = f"{base_url}/app/student/wallet.html?checkout=pending&order_id={order_id}"
+    ipn_url = f"{base_url}/api/payments/momo/ipn"
+    extra_data = ""
+    request_type = "payWithMethod"
+    raw = (f"accessKey={access_key}&amount={amount}&extraData={extra_data}&ipnUrl={ipn_url}"
+           f"&orderId={order_id}&orderInfo={order_info}&partnerCode={partner_code}"
+           f"&redirectUrl={redirect_url}&requestId={request_id}&requestType={request_type}")
+    signature = hmac.new(secret_key.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    payload = {"partnerCode": partner_code, "requestId": request_id, "amount": amount,
+               "orderId": order_id, "orderInfo": order_info, "redirectUrl": redirect_url,
+               "ipnUrl": ipn_url, "requestType": request_type, "extraData": extra_data,
+               "lang": "vi", "autoCapture": True, "signature": signature}
+    try:
+        response = requests.post(f"{api_base}/v2/gateway/api/create", json=payload, timeout=12)
+        response.raise_for_status()
+        result = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise PaymentError("Could not create a MoMo payment request") from exc
+    if result.get("resultCode") != 0 or not result.get("payUrl"):
+        raise PaymentError(result.get("message") or "MoMo rejected the payment request")
+    return str(result.get("qrCodeUrl") or result["payUrl"]), request_id
+
+
+def create_topup_order(user_id: str, amount: int, method: str = "demo") -> dict:
     """POST /api/wallet/topup: Create a pending top-up order and return checkout pay_url."""
     if amount < 10000:
         raise ValueError("Minimum top-up amount is 10,000 VND")
 
+    available = {item["id"] for item in available_payment_methods() if item["configured"]}
+    if method not in available:
+        raise ValueError("This payment method is not configured")
     order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
     sig = compute_signature(order_id, amount, user_id)
-
     order = {
         "order_id": order_id,
         "user_id": user_id,
         "amount": amount,
         "status": "pending",
         "signature": sig,
+        "method": method,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    qr_payload = qr_image_url = payment_ref = ""
+    if method == "vietqr":
+        payment_ref, qr_image_url, account_name = _make_vietqr(order_id, amount)
+        order.update(payment_ref=payment_ref, account_name=account_name, qr_image_url=qr_image_url,
+                     receiver_bank_id=os.getenv("VIETQR_BANK_ID", "").strip(),
+                     receiver_account_no=os.getenv("VIETQR_ACCOUNT_NO", "").strip())
+    elif method == "momo":
+        qr_payload, request_id = _make_momo(order_id, amount, user_id)
+        order.update(momo_request_id=request_id, momo_qr_payload=qr_payload)
     _orders[order_id] = order
-
-    pay_url = (
-        f"/app/student/mock-checkout.html?order_id={order_id}"
-        f"&amount={amount}&user_id={user_id}&signature={sig}"
-    )
+    pay_url = _topup_checkout_url(order_id, method, amount, user_id, sig, qr_payload, qr_image_url)
 
     return {
         "order_id": order_id,
         "amount": amount,
         "pay_url": pay_url,
         "signature": sig,
+        "method": method,
+        "payment_ref": payment_ref,
         "status": "pending",
     }
+
+
+def get_order_status(user_id: str, order_id: str) -> dict:
+    order = _orders.get(order_id)
+    if not order or order.get("user_id") != user_id:
+        raise PaymentError("Payment order not found")
+    return {"order_id": order_id, "status": order["status"], "method": order.get("method", "demo"),
+            "amount": order["amount"], "payment_ref": order.get("payment_ref", ""),
+            "qr_image_url": order.get("qr_image_url", ""), "qr_payload": order.get("momo_qr_payload", ""),
+            "account_name": order.get("account_name", ""), "bank_id": order.get("receiver_bank_id", ""),
+            "account_no": order.get("receiver_account_no", "")}
+
+
+def process_momo_ipn(payload: dict) -> dict:
+    """Verify a server-to-server MoMo IPN before changing the wallet balance."""
+    secret_key, access_key = os.getenv("MOMO_SECRET_KEY", ""), os.getenv("MOMO_ACCESS_KEY", "")
+    if not secret_key or not access_key:
+        raise PaymentError("MoMo IPN is not configured")
+    fields = ("accessKey", "amount", "extraData", "message", "orderId", "orderInfo", "orderType",
+              "partnerCode", "payType", "requestId", "responseTime", "resultCode", "transId")
+    raw = "&".join(f"{key}={access_key if key == 'accessKey' else payload.get(key, '')}" for key in fields)
+    expected = hmac.new(secret_key.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, str(payload.get("signature", ""))):
+        raise PaymentError("Invalid MoMo notification signature")
+    order = _orders.get(str(payload.get("orderId", "")))
+    if (not order or order.get("method") != "momo" or order["amount"] != int(payload.get("amount", 0))
+            or order.get("momo_request_id") != payload.get("requestId")
+            or order.get("status") != "pending"
+            or os.getenv("MOMO_PARTNER_CODE", "") != payload.get("partnerCode")):
+        raise PaymentError("MoMo notification does not match a pending order")
+    success = int(payload.get("resultCode", -1)) == 0
+    return process_verified_provider_result(order, success)
+
+
+def process_verified_provider_result(order: dict, success: bool) -> dict:
+    if order["status"] in ("completed", "failed"):
+        return {"order_id": order["order_id"], "status": order["status"], "idempotent": True}
+    if success:
+        wallet = _wallets.get(order["user_id"])
+        if not wallet:
+            get_wallet(order["user_id"])
+            wallet = _wallets[order["user_id"]]
+        wallet["balance"] += float(order["amount"])
+        wallet["updated_at"] = datetime.now(timezone.utc).isoformat()
+        order["status"] = "completed"
+        tx_id = f"TX-TOP-{uuid.uuid4().hex[:8]}"
+        _ledger[tx_id] = {"transaction_id": tx_id, "user_id": order["user_id"], "type": "topup",
+                          "amount": float(order["amount"]), "status": "completed", "order_id": order["order_id"],
+                          "timestamp": datetime.now(timezone.utc).isoformat()}
+    else:
+        order["status"] = "failed"
+    return {"order_id": order["order_id"], "status": order["status"], "idempotent": False}
 
 
 def process_payment_callback(order_id: str, amount: int, user_id: str,
@@ -124,6 +263,8 @@ def process_payment_callback(order_id: str, amount: int, user_id: str,
     order = _orders.get(order_id)
     if not order:
         raise PaymentError(f"Order {order_id} not found")
+    if order.get("method", "demo") != "demo":
+        raise PaymentError("Live payment orders can only be confirmed by the payment provider")
 
     # Idempotency: If already completed or failed, return recorded state without re-crediting
     if order["status"] in ("completed", "failed"):

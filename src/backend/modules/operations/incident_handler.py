@@ -90,6 +90,26 @@ def _open_incident(source: str, target_type: str, target_id: str, hub_id: Option
     return incident
 
 
+def seed_demo_incidents() -> None:
+    """Seed repeatable demo incidents using the current operations store schema."""
+    if ops_store.current().incidents:
+        return
+    examples = [
+        ("vehicle", "V-002", "brake_failure", Severity.CRITICAL, "brake"),
+        ("vehicle", "V-007", "battery_danger", Severity.WARNING, "lowBattery"),
+        ("vehicle", "V-014", "flat_tire", Severity.INFO, "flatTire"),
+    ]
+    for target_type, target_id, category, severity, demo_case in examples:
+        hub_id = _locate(target_type, target_id)
+        if not hub_id:
+            continue
+        incident = _open_incident("demo", target_type, target_id, hub_id, category,
+                                  "", severity=severity)
+        if incident:
+            incident["demo"] = True
+            incident["demo_case"] = demo_case
+
+
 # --------------------------------------------------------------------------- #
 # event subscribers                                                           #
 # --------------------------------------------------------------------------- #

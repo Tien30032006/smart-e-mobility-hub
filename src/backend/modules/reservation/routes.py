@@ -7,12 +7,13 @@ Endpoints:
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from ...core.auth import require_student
 from ...core.entities import Student
-from . import payment_gateway, service
+from ...core.state_manager import network
+from . import geo, payment_gateway, service
 
 router = APIRouter(tags=["Reservation & Wallet - Member 1"])
 
@@ -51,6 +52,7 @@ class IssueIn(BaseModel):
 
 class TopUpIn(BaseModel):
     amount: int
+    method: str = "demo"
 
 
 class PaymentCallbackIn(BaseModel):
@@ -66,6 +68,13 @@ class PaymentCallbackIn(BaseModel):
 def search(from_hub: Optional[str] = None, to_hub: Optional[str] = None,
            vehicle_type: Optional[str] = None, min_battery: int = 0):
     return service.search_hubs_and_vehicles(from_hub, to_hub, vehicle_type, min_battery)
+
+
+@router.get("/api/reservation/hubs/nearby")
+def hubs_nearby(lat: float = Query(..., ge=-90, le=90), lng: float = Query(..., ge=-180, le=180),
+                limit: int = Query(0, ge=0, le=50)):
+    """U1: hubs sorted by straight-line distance from a GPS fix or a point picked on the map."""
+    return geo.rank_by_distance((network.get_hub_status(h) for h in list(network.hubs)), lat, lng, limit)
 
 
 @router.get("/api/reservation/vehicles/{vehicle_id}")
@@ -128,11 +137,26 @@ def get_wallet_transactions(user: Student = Depends(require_student)):
 
 @router.post("/api/wallet/topup")
 def topup_wallet(body: TopUpIn, user: Student = Depends(require_student)):
-    """POST /api/wallet/topup: Generate top-up order and pay_url for mock checkout."""
+    """Create a demo, VietQR, or MoMo top-up order using server-side provider config."""
     try:
-        return payment_gateway.create_topup_order(user.user_id, body.amount)
+        return payment_gateway.create_topup_order(user.user_id, body.amount, body.method)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except payment_gateway.PaymentError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/api/wallet/payment-methods")
+def wallet_payment_methods(user: Student = Depends(require_student)):
+    return payment_gateway.available_payment_methods()
+
+
+@router.get("/api/wallet/topup/{order_id}")
+def topup_status(order_id: str, user: Student = Depends(require_student)):
+    try:
+        return payment_gateway.get_order_status(user.user_id, order_id)
+    except payment_gateway.PaymentError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/api/payments/callback")
@@ -148,3 +172,13 @@ def payment_callback(body: PaymentCallbackIn):
         )
     except payment_gateway.PaymentError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/api/payments/momo/ipn", status_code=204)
+async def momo_payment_ipn(request: Request):
+    """MoMo's server-to-server callback; never accept a browser-generated success signal."""
+    try:
+        payment_gateway.process_momo_ipn(await request.json())
+    except payment_gateway.PaymentError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(status_code=204)

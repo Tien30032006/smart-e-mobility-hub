@@ -46,3 +46,51 @@ def seed_network(target: HubNetworkManager = default_network, fresh: bool = True
         for user in target.users.values():          # seeded accounts skip onboarding
             user._db = {"onboarded": True, "created_at": None}
     return target
+
+
+def sync_seed_catalog(target: HubNetworkManager = default_network) -> HubNetworkManager:
+    """Add newly configured demo hubs/resources while preserving the live saved state."""
+    data = load_json("hubs-data.json")
+    with target.lock:
+        for item in data["hubs"]:
+            hub = target.hubs.get(item["id"])
+            if hub is None:
+                hub = MobilityHub(hub_id=item["id"], name=item["name"],
+                                  location=item["location"], capacity=item["capacity"])
+                target.register_hub(hub)
+            else:
+                hub.name = item["name"]
+                hub.location = item["location"]
+                hub.capacity = item["capacity"]
+            for i in range(1, item["capacity"] + 1):
+                sid = f"{item['id']}-P{i:02d}"
+                if sid not in hub.parking_spaces:
+                    hub.parking_spaces[sid] = ParkingSpace(
+                        space_id=sid, hub_id=hub.hub_id,
+                        zone="A" if i <= item["capacity"] // 2 else "B")
+            for i in range(1, item["charging_points"] + 1):
+                pid = f"{item['id']}-C{i:02d}"
+                if pid not in hub.charging_points:
+                    hub.charging_points[pid] = ChargingPoint(
+                        point_id=pid, hub_id=hub.hub_id,
+                        power_rating=item.get("charging_power_kw", 3.3))
+        for item in data["vehicles"]:
+            if item["id"] not in target.vehicles:
+                target.register_vehicle(EVehicle(
+                    vehicle_id=item["id"], model=item.get("model", ""),
+                    vehicle_type=item["type"], battery_level=item["battery"],
+                    status=VehicleStatus(item["status"]), hub_id=item["hub_id"],
+                    owner_id=item.get("owner_id")))
+        for item in data["users"]:
+            if item["id"] in target.users:
+                continue
+            if item["role"] == "student":
+                user = Student(user_id=item["id"], full_name=item["full_name"],
+                               email=item["email"], student_code=item.get("student_code", ""),
+                               has_private_ev=item.get("has_private_ev", False))
+            else:
+                user = Operator(user_id=item["id"], full_name=item["full_name"],
+                                email=item["email"], operator_id=item.get("operator_id", ""))
+            user._db = {"onboarded": True, "created_at": None}
+            target.register_user(user)
+    return target

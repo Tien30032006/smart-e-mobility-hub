@@ -11,8 +11,10 @@ const Hub = (() => {
   /* [file, i18n key, icon, short tab label key] */
   const MENU = {
     student: [
-      ['find-hub.html', 'menu.findHub', 'map', 'tab.discover'], ['reserve-vehicle.html', 'menu.reserve', 'parking', 'tab.reserve'],
-      ['my-trips.html', 'menu.trips', 'bike', 'tab.trips'], ['charging-request.html', 'menu.charging', 'zap', 'tab.charge'],
+      ['find-hub.html', 'menu.findHub', 'map', 'tab.discover'],
+      ['my-trips.html', 'menu.trips', 'bike', 'tab.trips'],
+      ['charging-request.html', 'menu.charging', 'zap', 'tab.charge'],
+      ['personal.html', 'menu.personal', 'user', 'tab.personal'],
     ],
     operator: [
       ['dashboard.html', 'menu.dashboard', 'grid'], ['alerts.html', 'menu.alerts', 'alert'],
@@ -70,15 +72,15 @@ const Hub = (() => {
       `<div class="links">${items.map(([f, k, ic]) =>
         `<a href="${base}${f}"${f === here ? ' aria-current="page"' : ''}>${role === 'operator' ? icon(ic) : ''}${esc(t(k))}</a>`).join('')}</div>` +
       `<div class="tools">` +
-        `<div class="seg" role="group" aria-label="${esc(t('common.language'))}">` +
+        `<div class="seg language-switch" role="group" aria-label="${esc(t('common.language'))}">` +
           I18n.SUPPORTED.map(l => `<button type="button" data-lang="${l}" aria-pressed="${I18n.lang === l}" lang="${l}">${l.toUpperCase()}</button>`).join('') +
         `</div>` +
         `<button type="button" class="icon-btn" id="theme-toggle" aria-label="${esc(t(dark ? 'common.themeLight' : 'common.themeDark'))}">${icon(dark ? 'sun' : 'moon')}</button>` +
         (s ? `<span class="who"><span class="name"><b>${esc(s.full_name)}</b><br>${esc(t('role.' + s.role))}</span>` +
              `<button type="button" class="icon-btn" id="logout" aria-label="${esc(t('common.logout'))}" title="${esc(t('common.logout'))}">${icon('logout')}</button></span>` : '') +
       `</div>`;
-    nav.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => I18n.setLang(b.dataset.lang));
     nav.querySelector('#theme-toggle').onclick = () => I18n.setTheme(I18n.theme === 'dark' ? 'light' : 'dark');
+    nav.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => I18n.setLang(b.dataset.lang));
     const lo = nav.querySelector('#logout');
     if (lo) lo.onclick = () => { API.logout(); location.href = '/app/index.html'; };
 

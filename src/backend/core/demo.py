@@ -14,12 +14,15 @@ log = get_logger("demo")
 def register_persisted_stores() -> None:
     """Tell the database which module-owned dicts must survive a restart."""
     from ..modules.reservation import payment_gateway, service, smart_lock
+    from ..modules.operations import state as operations_state
     persistence.register_store("wallet.wallets", lambda: payment_gateway._wallets)
     persistence.register_store("wallet.orders", lambda: payment_gateway._orders)
     persistence.register_store("wallet.ledger", lambda: payment_gateway._ledger)
     persistence.register_store("reservation.trips", lambda: service._trips)
     persistence.register_store("reservation.issues", lambda: service._issues)
     persistence.register_store("reservation.locks", lambda: smart_lock._lock_states)
+    for name in ("alerts", "incidents", "tickets", "relocation_orders", "charging_overrides"):
+        persistence.register_store(f"operations.{name}", lambda name=name: getattr(operations_state, name))
     persistence.attach_bus(bus)
 
 
@@ -27,6 +30,8 @@ def reset_module_state() -> None:
     """Clear every module-owned store (each module exposes its own reset helper)."""
     from ..modules.reservation import payment_gateway, service, smart_lock
     payment_gateway.reset_ledger()
+    from ..modules.operations import state as operations_state
+    operations_state.reset()
     service.reset_module_state()
     smart_lock.reset_locks()
     try:
@@ -42,6 +47,13 @@ def reset_demo(seed: int | None = None) -> dict:
     with network.lock:
         reset_module_state()
         seed_network(fresh=True)
+        try:
+            from ..modules.operations.incident_handler import seed_demo_incidents
+            from .config import settings
+            if settings.demo_mode:
+                seed_demo_incidents()
+        except Exception:  # noqa: BLE001
+            log.exception("demo incident seed failed")
         bus.history.clear()
         simulator.reseed(seed)
     if persistence.enabled:

@@ -27,6 +27,7 @@ class EventBus:
         self._handlers: Dict[Optional[EventType], List[Handler]] = defaultdict(list)
         self._lock = threading.RLock()
         self.history: List[Event] = []
+        self.generation = 0
 
     def subscribe(self, event_type: Optional[EventType], handler: Handler) -> None:
         """event_type=None subscribes to every event."""
@@ -55,6 +56,7 @@ class EventBus:
         with self._lock:
             self._handlers.clear()
             self.history.clear()
+            self.generation += 1
 
 
 bus = EventBus()

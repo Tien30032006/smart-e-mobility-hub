@@ -7,7 +7,7 @@ from src.backend.tests.conftest import OPERATOR, STUDENT
 
 
 def test_seed_loaded():
-    assert len(network.hubs) == 4 and len(network.vehicles) == 10
+    assert len(network.hubs) == 20 and len(network.vehicles) == 34
     assert isinstance(network.users["U-S01"], Student)
     assert isinstance(network.users["U-OP1"], Operator)
 
@@ -67,10 +67,10 @@ def test_login_and_roles(client):
 
 
 def test_shared_hub_endpoints(client):
-    assert client.get("/api/health").json()["hubs"] == 4
-    assert len(client.get("/api/hubs").json()) == 4
+    assert client.get("/api/health").json()["hubs"] == 20
+    assert len(client.get("/api/hubs").json()) == 20
     assert client.get("/api/hubs/HUB-NOPE").status_code == 404
-    assert client.get("/api/network/status").json()["totals"]["hubs"] == 4
+    assert client.get("/api/network/status").json()["totals"]["hubs"] == 20
 
 
 def test_unfinished_endpoint_reports_owner(client):

@@ -1,181 +1,156 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title data-i18n="checkout.title">Payment Gateway Checkout (Mock)</title>
+  <title data-i18n="checkout.title">Thanh toán</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    .checkout-wrap {
-      max-width: 480px;
-      margin: 32px auto;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,0.1));
-    }
-    .checkout-banner {
-      background: linear-gradient(135deg, #a51263, #d91b7e);
-      color: white;
-      padding: 24px;
-      text-align: center;
-    }
-    .checkout-body {
-      padding: 24px;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--line);
-      font-size: 0.95rem;
-    }
-    .qr-payment-box {
-      width: 170px;
-      height: 170px;
-      margin: 20px auto;
-      border: 2px dashed #d91b7e;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: white;
-      color: #111;
-      font-family: monospace;
-      text-align: center;
-      padding: 12px;
-    }
-    .btn-success {
-      background: #10b981;
-      color: white;
-      width: 100%;
-      padding: 14px;
-      font-size: 1rem;
-      font-weight: 700;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      margin-bottom: 10px;
-      transition: opacity 0.15s ease;
-    }
-    .btn-failed {
-      background: #ef4444;
-      color: white;
-      width: 100%;
-      padding: 14px;
-      font-size: 1rem;
-      font-weight: 700;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      margin-bottom: 10px;
-      transition: opacity 0.15s ease;
-    }
-    .btn-cancel {
-      background: var(--bg);
-      color: var(--ink);
-      width: 100%;
-      padding: 12px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-      display: block;
-    }
-    .btn-success:hover, .btn-failed:hover { opacity: 0.9; }
+    body.shell-student { min-height: 100vh; }
+    .checkout-wrap { max-width: 560px; margin: 26px auto 48px; padding: 0 18px; }
+    .checkout-card { overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow-lg); }
+    .checkout-banner { padding: 22px 24px; color: #fff; background: linear-gradient(135deg, #075a48, #078a6a); }
+    .checkout-banner h1 { margin: 0; font-size: 22px; }
+    .checkout-banner p { margin: 5px 0 0; color: rgba(255,255,255,.82); }
+    .checkout-body { padding: 22px 24px 24px; }
+    .checkout-summary { display: grid; gap: 0; margin-bottom: 18px; }
+    .info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .info-row b, .info-row code { text-align: right; overflow-wrap: anywhere; }
+    .checkout-qr { display: grid; justify-items: center; gap: 10px; padding: 20px 14px 14px; border: 1px solid var(--line); border-radius: 18px; background: #f7faf8; }
+    .checkout-qr img { width: min(100%, 280px); aspect-ratio: 1; object-fit: contain; background: #fff; border: 1px solid #e5ebe7; border-radius: 12px; }
+    #qr-code { width: 260px; height: 260px; display: grid; place-items: center; padding: 10px; background: white; border: 1px solid #e5ebe7; border-radius: 12px; }
+    #qr-code img, #qr-code canvas { max-width: 100%; max-height: 100%; }
+    .checkout-note { margin: 14px 0; padding: 12px 14px; border-radius: 12px; background: var(--info-soft); color: var(--ink); font-size: 13px; line-height: 1.5; }
+    .checkout-note[data-method="demo"] { background: var(--warn-soft); }
+    .checkout-actions { display: grid; gap: 9px; margin-top: 18px; }
+    .checkout-actions > * { width: 100%; }
+    .checkout-status { min-height: 18px; color: var(--muted); text-align: center; font-size: 13px; }
+    .checkout-footer { display: flex; justify-content: center; margin-top: 14px; }
+    .checkout-footer a { font-weight: 650; }
+    #checkout-error:empty { display: none; }
+    @media (max-width: 520px) { .checkout-wrap { margin: 16px auto 28px; padding: 0 14px; } .checkout-body { padding: 18px; } #qr-code { width: 230px; height: 230px; } }
   </style>
 </head>
 <body data-role="student">
   <nav id="nav"></nav>
-  <main>
-    <div class="checkout-wrap">
-      <div class="checkout-banner">
-        <div style="font-size:1.8rem; font-weight:800; letter-spacing:1px;">MoMo / VNPay</div>
-        <div style="font-size:0.85rem; opacity:0.9;" data-i18n="checkout.bannerSub">Simulated MoMo / VNPay IPN Checkout</div>
-      </div>
+  <main class="checkout-wrap">
+    <section class="checkout-card">
+      <header class="checkout-banner">
+        <h1 data-i18n="checkout.banner">Cổng thanh toán an toàn</h1>
+        <p id="checkout-provider"></p>
+      </header>
       <div class="checkout-body">
-        <div class="info-row">
-          <span class="muted" data-i18n="checkout.orderId">Order ID:</span>
-          <code id="txt-order-id">ORD-00000000</code>
-        </div>
-        <div class="info-row">
-          <span class="muted" data-i18n="checkout.student">Student Account:</span>
-          <span id="txt-user-id" style="font-weight:600;"></span>
-        </div>
-        <div class="info-row">
-          <span class="muted" data-i18n="checkout.amount">Amount to Pay:</span>
-          <b id="txt-amount" style="font-size:1.3rem; color:#d91b7e;">0 VND</b>
+        <div class="checkout-summary">
+          <div class="info-row"><span class="muted" data-i18n="checkout.payee">Đơn vị nhận:</span><b id="txt-payee">Smart E-Mobility Hub</b></div>
+          <div class="info-row" id="bank-row" hidden><span class="muted" data-i18n="checkout.bankAccount">Ngân hàng / số tài khoản:</span><b id="txt-bank"></b></div>
+          <div class="info-row"><span class="muted" data-i18n="checkout.order">Mã đơn hàng:</span><code id="txt-order-id"></code></div>
+          <div class="info-row"><span class="muted" data-i18n="checkout.total">Tổng tiền:</span><b id="txt-amount" class="balance-display"></b></div>
+          <div class="info-row" id="reference-row" hidden><span class="muted" data-i18n="checkout.transferRef">Nội dung chuyển khoản:</span><code id="txt-reference"></code></div>
         </div>
 
-        <div class="qr-payment-box">
-          <div style="font-size:1.1rem; font-weight:800; color:#a51263;">VIETQR / MOMO</div>
-          <div style="font-size:0.75rem; color:#555; margin-top:8px;" data-i18n="checkout.qrNote">MOCK QR CODE</div>
+        <div id="qr-panel" class="checkout-qr" hidden>
+          <img id="vietqr-image" alt="VietQR payment code" hidden>
+          <div id="qr-code" aria-label="Payment QR code"></div>
+          <b data-i18n="checkout.scan">Quét bằng ứng dụng ngân hàng</b>
         </div>
-
-        <p class="muted" style="font-size:0.85rem; text-align:center; margin-bottom:20px;" data-i18n="checkout.scanQr">
-          Scan QR with MoMo/VNPay app or choose test outcome below:
-        </p>
-
-        <button type="button" class="btn-success" id="btn-pay-success">
-          ✓ <span data-i18n="checkout.btnSuccess">Simulate Successful Payment</span>
-        </button>
-        <button type="button" class="btn-failed" id="btn-pay-fail">
-          ✕ <span data-i18n="checkout.btnFailed">Simulate Payment Failure</span>
-        </button>
-        <a href="/app/student/wallet.html" class="btn-cancel" data-i18n="checkout.btnCancel">Cancel and Return to Wallet</a>
+        <div id="demo-panel" class="checkout-qr" hidden>
+          <span class="badge warn" data-i18n="wallet.provider.demo">Thanh toán demo</span>
+          <span class="muted" data-i18n="checkout.demoNote">Chỉ là demo, không chuyển tiền.</span>
+        </div>
+        <p id="checkout-note" class="checkout-note" data-method="demo"></p>
+        <div id="checkout-error" class="error" role="alert"></div>
+        <div id="checkout-status" class="checkout-status" role="status" aria-live="polite"></div>
+        <div class="checkout-actions">
+          <a id="open-provider" class="button" target="_blank" rel="noopener" hidden data-i18n="checkout.openProvider">Mở trang thanh toán</a>
+          <button type="button" class="button" id="btn-pay-success" hidden>✓ <span data-i18n="checkout.success">Mô phỏng thanh toán thành công</span></button>
+          <button type="button" class="secondary" id="btn-pay-fail" hidden>× <span data-i18n="checkout.failure">Mô phỏng thanh toán bị từ chối / hủy</span></button>
+        </div>
+        <div class="checkout-footer"><a id="back-wallet" href="/app/student/wallet.html?checkout=pending" data-i18n="checkout.backWallet">Quay lại ví</a></div>
       </div>
-    </div>
+    </section>
   </main>
-
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
     Hub.init();
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('order_id') || '';
-    const amount = parseInt(urlParams.get('amount')) || 0;
-    const userId = urlParams.get('user_id') || '';
-    const signature = urlParams.get('signature') || '';
-
-    function formatAmount() {
-      const locale = I18n.lang === 'vi' ? 'vi-VN' : 'en-US';
-      document.getElementById('txt-amount').textContent = amount.toLocaleString(locale) + ' VND';
-    }
-
-    document.getElementById('txt-order-id').textContent = orderId;
-    document.getElementById('txt-user-id').textContent = userId;
-    formatAmount();
-
-    async function sendCallback(success) {
+    const params = new URLSearchParams(location.search);
+    const orderId = params.get('order_id') || '';
+    const demoData = { amount: Number(params.get('amount') || 0), user_id: params.get('user_id') || '', signature: params.get('signature') || '' };
+    const $ = id => document.getElementById(id);
+    let currentOrder = null, pollTimer = null, redirecting = false;
+    const methodNames = { vietqr: 'wallet.provider.vietqr', momo: 'wallet.provider.momo', demo: 'wallet.provider.demo' };
+    function showError(message) { $('checkout-error').textContent = message || ''; }
+    function showNote(key, method) { $('checkout-note').textContent = Hub.t(key); $('checkout-note').dataset.method = method; }
+    function providerLink(raw) {
       try {
-        await API.post('/api/payments/callback', {
-          order_id: orderId,
-          amount: amount,
-          user_id: userId,
-          signature: signature,
-          success: success
-        });
-        window.location.href = '/app/student/wallet.html?checkout=' + (success ? 'success' : 'failed');
-      } catch (err) {
-        alert('Callback failed: ' + err.message);
+        const url = new URL(raw);
+        return url.protocol === 'https:' && ['payment.momo.vn', 'test-payment.momo.vn'].includes(url.hostname) ? url.href : '';
+      } catch (_) { return ''; }
+    }
+    function renderOrder(order) {
+      currentOrder = order;
+      $('txt-order-id').textContent = order.order_id;
+      $('txt-amount').textContent = Number(order.amount || 0).toLocaleString(I18n.lang) + ' VND';
+      $('checkout-provider').textContent = Hub.t(methodNames[order.method] || methodNames.demo);
+      $('reference-row').hidden = !order.payment_ref;
+      $('txt-reference').textContent = order.payment_ref || '';
+      $('bank-row').hidden = order.method !== 'vietqr';
+      $('txt-bank').textContent = [order.bank_id, order.account_no].filter(Boolean).join(' · ');
+      $('back-wallet').href = '/app/student/wallet.html?checkout=pending&order_id=' + encodeURIComponent(order.order_id);
+      const live = order.method !== 'demo';
+      $('qr-panel').hidden = !live;
+      $('demo-panel').hidden = live;
+      $('btn-pay-success').hidden = live;
+      $('btn-pay-fail').hidden = live;
+      $('open-provider').hidden = order.method !== 'momo';
+      if (order.method === 'vietqr') {
+        showNote('checkout.vietqrNote', 'vietqr');
+        $('qr-code').hidden = true; $('vietqr-image').hidden = !order.qr_image_url;
+        if (order.qr_image_url && new URL(order.qr_image_url).hostname === 'img.vietqr.io') $('vietqr-image').src = order.qr_image_url;
+        $('txt-payee').textContent = order.account_name || 'Smart E-Mobility Hub';
+      } else if (order.method === 'momo') {
+        showNote('checkout.momoNote', 'momo');
+        $('vietqr-image').hidden = true; $('qr-code').hidden = false; $('qr-code').replaceChildren();
+        const link = providerLink(order.qr_payload);
+        if (link && typeof QRCode !== 'undefined') new QRCode($('qr-code'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        $('open-provider').href = link;
+        $('txt-payee').textContent = 'MoMo';
+      } else {
+        showNote('checkout.demoNote', 'demo');
+        $('checkout-status').textContent = '';
+      }
+      if (live && order.status === 'pending') $('checkout-status').textContent = Hub.t('checkout.pending');
+      if (order.status === 'completed') { $('checkout-status').textContent = Hub.t('checkout.confirmed'); scheduleReturn('success'); }
+      if (order.status === 'failed') scheduleReturn('failed');
+    }
+    function scheduleReturn(result) {
+      if (redirecting) return; redirecting = true; clearInterval(pollTimer);
+      setTimeout(() => { location.href = '/app/student/wallet.html?checkout=' + result; }, 900);
+    }
+    async function refreshOrder() {
+      try {
+        const order = await API.get('/api/wallet/topup/' + encodeURIComponent(orderId));
+        renderOrder(order);
+      } catch (error) { showError(error.message || Hub.t('wallet.methodsUnavailable')); clearInterval(pollTimer); }
+    }
+    async function sendDemoResult(success) {
+      if (!currentOrder || currentOrder.method !== 'demo' || !demoData.signature) return;
+      $('btn-pay-success').disabled = $('btn-pay-fail').disabled = true;
+      try {
+        await API.post('/api/payments/callback', { order_id: orderId, amount: demoData.amount, user_id: demoData.user_id, signature: demoData.signature, success });
+        scheduleReturn(success ? 'success' : 'failed');
+      } catch (error) {
+        showError(Hub.t('checkout.callbackFailed') + error.message);
+        $('btn-pay-success').disabled = $('btn-pay-fail').disabled = false;
       }
     }
-
-    document.getElementById('btn-pay-success').onclick = () => sendCallback(true);
-    document.getElementById('btn-pay-fail').onclick = () => sendCallback(false);
-
-    document.addEventListener('langchange', () => {
-      I18n.apply();
-      formatAmount();
-    });
+    $('btn-pay-success').onclick = () => sendDemoResult(true);
+    $('btn-pay-fail').onclick = () => sendDemoResult(false);
+    document.addEventListener('langchange', () => { if (currentOrder) renderOrder(currentOrder); });
+    if (!orderId) showError(Hub.t('wallet.methodsUnavailable'));
+    else refreshOrder().then(() => { pollTimer = setInterval(refreshOrder, 3000); });
   </script>
 </body>
 </html>

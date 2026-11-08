@@ -390,3 +390,24 @@ def test_student_wallet_topup_and_callback(client):
     assert any(t["type"] == "topup" for t in txs)
 
 
+
+
+# ---- U1 distance from a GPS fix / map pick -----------------------------------
+def test_haversine_known_distance():
+    from src.backend.modules.reservation.geo import haversine_m
+    # Ben Thanh -> Opera House is roughly 0.6 km
+    assert 400 < haversine_m(10.7725, 106.6981, 10.7766, 106.7031) < 800
+    assert haversine_m(10.8, 106.7, 10.8, 106.7) == 0
+
+
+def test_nearby_hubs_sorted_by_distance():
+    from fastapi.testclient import TestClient
+    from src.backend.app import app
+    r = TestClient(app).get("/api/reservation/hubs/nearby", params={"lat": 10.7731, "lng": 106.6602})
+    assert r.status_code == 200
+    rows = r.json()
+    assert rows[0]["hub_id"] == "HUB-BK1" and rows[0]["distance_m"] < 50
+    assert [x["distance_m"] for x in rows] == sorted(x["distance_m"] for x in rows)
+    assert all("walk_min" in x for x in rows)
+    assert len(TestClient(app).get("/api/reservation/hubs/nearby", params={"lat": 10.8, "lng": 106.7, "limit": 3}).json()) == 3
+    assert TestClient(app).get("/api/reservation/hubs/nearby", params={"lat": 999, "lng": 0}).status_code == 422
