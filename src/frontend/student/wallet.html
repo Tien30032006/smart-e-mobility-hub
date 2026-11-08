@@ -8,61 +8,166 @@
   <link rel="stylesheet" href="/app/assets/css/style.css">
   <style>
     .wallet-layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 24px;
-    }
-    @media (min-width: 800px) {
-      .wallet-layout {
-        grid-template-columns: 1fr 1fr;
-      }
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
     .wallet-card {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 24px;
+      border-radius: 20px;
+      padding: 20px 18px;
+      box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.04));
     }
     .balance-display {
-      font-size: 2.5rem;
+      font-size: clamp(2.1rem, 7vw, 2.6rem);
       font-weight: 800;
       color: var(--brand);
-      margin: 8px 0;
+      margin: 8px 0 12px;
+      letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums;
     }
-    .amount-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 16px 0;
+    .balance-sub-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+    .balance-pill {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    .amount-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 14px 0;
     }
     .amount-btn {
-      padding: 10px 16px;
+      padding: 12px 10px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 12px;
       background: var(--bg);
       color: var(--ink);
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 0.95rem;
       cursor: pointer;
+      text-align: center;
       transition: all 0.15s ease;
+      touch-action: manipulation;
     }
+    .amount-btn:active { transform: scale(0.97); }
     .amount-btn.active {
       border-color: var(--brand);
       background: var(--brand);
       color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+    .custom-input {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 1rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    #btn-submit-topup {
+      width: 100%;
+      min-height: 48px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .tx-list {
+      display: flex;
+      flex-direction: column;
+    }
+    .tx-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .tx-item:last-child {
+      border-bottom: none;
+      padding-bottom: 4px;
+    }
+    .tx-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+    .tx-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      flex: none;
+      color: var(--brand);
+    }
+    .tx-icon-box.deposit { color: #f59e0b; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); }
+    .tx-icon-box.trip_fee { color: #6366f1; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2); }
+    .tx-icon-box.refund { color: #10b981; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); }
+    .tx-details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .tx-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tx-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tx-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex: none;
+    }
+    .tx-amount {
+      font-weight: 800;
+      font-size: 0.95rem;
+      font-variant-numeric: tabular-nums;
     }
   </style>
 </head>
 <body data-role="student">
   <nav id="nav"></nav>
-  <main>
+  <main style="padding-bottom: 96px;">
     <header class="page-head">
       <h1 data-i18n="wallet.title">Student Wallet</h1>
       <p class="muted" data-i18n="wallet.sub">Manage your e-mobility digital wallet, deposit holds, and simulated gateway top-ups.</p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 1</span></span>
-        <span class="chip"><span>Pipeline Demo U8</span></span>
-      </div>
     </header>
 
     <div id="notice-container"></div>
@@ -70,16 +175,16 @@
     <div class="wallet-layout">
       <!-- Balance Card -->
       <div class="wallet-card">
-        <span class="muted" style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;" data-i18n="wallet.currBalance">Current Balance</span>
+        <span class="muted" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;" data-i18n="wallet.currBalance">Current Balance</span>
         <div class="balance-display" id="disp-balance">0 VND</div>
-        <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
-          <div>
-            <span class="muted" style="font-size:0.8rem;" data-i18n="wallet.availRentals">Available for rentals & charging</span>
-            <div style="font-weight:700; font-size:1.1rem; color:#10b981;" id="disp-available">0 VND</div>
+        <div class="balance-sub-grid">
+          <div class="balance-pill">
+            <span class="muted" style="font-size:0.75rem; display:block; margin-bottom:2px;" data-i18n="wallet.availRentals">Available to spend</span>
+            <div style="font-weight:800; font-size:1.05rem; color:#10b981;" id="disp-available">0 VND</div>
           </div>
-          <div>
-            <span class="muted" style="font-size:0.8rem;" data-i18n="wallet.heldDeposit">Held in Active Deposits:</span>
-            <div style="font-weight:700; font-size:1.1rem; color:#f59e0b;" id="disp-held">0 VND</div>
+          <div class="balance-pill">
+            <span class="muted" style="font-size:0.75rem; display:block; margin-bottom:2px;" data-i18n="wallet.heldDeposit">Deposit held</span>
+            <div style="font-weight:800; font-size:1.05rem; color:#f59e0b;" id="disp-held">0 VND</div>
           </div>
         </div>
       </div>
@@ -87,29 +192,29 @@
       <!-- Top-up Card -->
       <div class="wallet-card">
         <h2 style="font-size:1.15rem; margin-top:0;" data-i18n="wallet.topUpTitle">Top Up Balance</h2>
-        <p class="muted" style="font-size:0.85rem;" data-i18n="wallet.topUpSub">Choose a quick amount or enter a custom value:</p>
-        <div class="amount-chips">
+        <p class="muted" style="font-size:0.85rem; margin-bottom:12px;" data-i18n="wallet.topUpSub">Choose a quick amount or enter a custom value:</p>
+        <div class="amount-grid">
           <button type="button" class="amount-btn active" data-val="50000">50.000 VND</button>
           <button type="button" class="amount-btn" data-val="100000">100.000 VND</button>
           <button type="button" class="amount-btn" data-val="200000">200.000 VND</button>
           <button type="button" class="amount-btn" data-val="500000">500.000 VND</button>
         </div>
         <div style="margin-bottom:16px;">
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="wallet.customAmount">Custom Amount (VND)</label>
-          <input type="number" id="inp-custom-amount" value="50000" min="10000" step="10000" style="width:100%; padding:10px 14px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink);">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:6px;" data-i18n="wallet.customAmount">Custom Amount (VND)</label>
+          <input type="number" id="inp-custom-amount" class="custom-input" value="50000" min="10000" step="10000">
         </div>
-        <button id="btn-submit-topup" class="button" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+        <button id="btn-submit-topup" class="button">
           <span id="topup-icon"></span>
           <span data-i18n="wallet.btnTopUp">Top Up via Mock Checkout</span>
         </button>
       </div>
-    </div>
 
-    <!-- Transaction Ledger History -->
-    <div class="card" style="margin-top:24px;">
-      <h2 style="font-size:1.15rem; margin-top:0;" data-i18n="wallet.historyTitle">Transaction History</h2>
-      <div id="tx-history-container">
-        <p class="muted" data-i18n="common.loading">Loading…</p>
+      <!-- Transaction Ledger History -->
+      <div class="wallet-card">
+        <h2 style="font-size:1.15rem; margin-top:0; margin-bottom:14px;" data-i18n="wallet.historyTitle">Transaction History</h2>
+        <div id="tx-history-container">
+          <p class="muted" data-i18n="common.loading">Loading…</p>
+        </div>
       </div>
     </div>
   </main>
@@ -134,11 +239,11 @@
     const checkoutStatus = urlParams.get('checkout');
     if (checkoutStatus === 'success') {
       const notice = document.getElementById('notice-container');
-      notice.innerHTML = `<div class="card" style="background:#ecfdf5; color:#065f46; border-color:#a7f3d0; margin-bottom:16px;">${Hub.esc(I18n.t('wallet.successNotice'))}</div>`;
+      notice.innerHTML = `<div class="card" style="background:#ecfdf5; color:#065f46; border-color:#a7f3d0; margin-bottom:16px; border-radius:16px; padding:14px;">${Hub.esc(I18n.t('wallet.successNotice'))}</div>`;
       setTimeout(() => { notice.innerHTML = ''; }, 6000);
     } else if (checkoutStatus === 'failed') {
       const notice = document.getElementById('notice-container');
-      notice.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;">${Hub.esc(I18n.t('wallet.failedNotice'))}</div>`;
+      notice.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px; border-radius:16px; padding:14px;">${Hub.esc(I18n.t('wallet.failedNotice'))}</div>`;
       setTimeout(() => { notice.innerHTML = ''; }, 6000);
     }
 
@@ -177,48 +282,68 @@
       lastTxData = txs;
       const container = document.getElementById('tx-history-container');
       if (!txs || !txs.length) {
-        container.innerHTML = `<p class="muted">${Hub.esc(I18n.t('wallet.noTx'))}</p>`;
+        container.innerHTML = `<p class="muted" style="margin:8px 0;">${Hub.esc(I18n.t('wallet.noTx'))}</p>`;
         return;
       }
 
       const locale = I18n.lang === 'vi' ? 'vi-VN' : 'en-US';
 
       container.innerHTML = `
-        <div style="overflow-x:auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>${Hub.esc(I18n.t('wallet.colDate'))}</th>
-                <th>${Hub.esc(I18n.t('wallet.colTxId'))}</th>
-                <th>${Hub.esc(I18n.t('wallet.colType'))}</th>
-                <th>${Hub.esc(I18n.t('wallet.colAmount'))}</th>
-                <th>${Hub.esc(I18n.t('wallet.colStatus'))}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${txs.map(t => {
-                let badgeClass = '';
-                if (t.type === 'deposit') badgeClass = 'warn';
-                else if (t.type === 'trip_fee') badgeClass = 'secondary';
-                else if (t.status === 'failed') badgeClass = 'bad';
+        <div class="tx-list">
+          ${txs.map(t => {
+            let iconType = 'zap';
+            let iconClass = '';
+            let sign = '';
+            let amountColor = 'var(--ink)';
 
-                const typeKey = 'wallet.type.' + t.type;
-                const statusKey = 'wallet.status.' + t.status;
-                const typeLabel = I18n.t(typeKey) !== typeKey ? I18n.t(typeKey) : t.type;
-                const statusLabel = I18n.t(statusKey) !== statusKey ? I18n.t(statusKey) : t.status;
+            if (t.type === 'deposit') {
+              iconType = 'parking';
+              iconClass = 'deposit';
+              amountColor = '#f59e0b';
+            } else if (t.type === 'trip_fee') {
+              iconType = 'bike';
+              iconClass = 'trip_fee';
+              sign = '-';
+              amountColor = '#ef4444';
+            } else if (t.status === 'refunded' || t.type === 'refund') {
+              iconType = 'refresh';
+              iconClass = 'refund';
+              sign = '+';
+              amountColor = '#10b981';
+            } else if (t.type === 'topup') {
+              iconType = 'zap';
+              sign = '+';
+              amountColor = '#10b981';
+            }
 
-                return `
-                  <tr>
-                    <td>${new Date(t.timestamp).toLocaleString(locale)}</td>
-                    <td><code>${Hub.esc(t.transaction_id)}</code></td>
-                    <td><b>${Hub.esc(typeLabel)}</b></td>
-                    <td style="font-weight:700;">${formatCurrency(t.amount)}</td>
-                    <td><span class="badge ${badgeClass}">${Hub.esc(statusLabel)}</span></td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+            let badgeClass = '';
+            if (t.type === 'deposit') badgeClass = 'warn';
+            else if (t.type === 'trip_fee') badgeClass = 'secondary';
+            else if (t.status === 'failed') badgeClass = 'bad';
+
+            const typeKey = 'wallet.type.' + t.type;
+            const statusKey = 'wallet.status.' + t.status;
+            const typeLabel = I18n.t(typeKey) !== typeKey ? I18n.t(typeKey) : t.type;
+            const statusLabel = I18n.t(statusKey) !== statusKey ? I18n.t(statusKey) : t.status;
+
+            return `
+              <div class="tx-item">
+                <div class="tx-left">
+                  <div class="tx-icon-box ${iconClass}">
+                    ${Hub.icon(iconType)}
+                  </div>
+                  <div class="tx-details">
+                    <span class="tx-title">${Hub.esc(typeLabel)}</span>
+                    <span class="tx-sub">${new Date(t.timestamp).toLocaleDateString(locale, { hour: '2-digit', minute: '2-digit' })} · <code>${Hub.esc(t.transaction_id.slice(-8))}</code></span>
+                  </div>
+                </div>
+                <div class="tx-right">
+                  <span class="tx-amount" style="color:${amountColor};">${sign}${formatCurrency(t.amount)}</span>
+                  <span class="badge ${badgeClass}" style="font-size:0.75rem;">${Hub.esc(statusLabel)}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       `;
     }
