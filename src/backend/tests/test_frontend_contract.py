@@ -40,4 +40,7 @@ def test_no_secrets_committed():
     assert (root / ".env.example").exists()
     assert ".env" in (root / ".gitignore").read_text().splitlines()
     example = (root / ".env.example").read_text()
-    assert "GOOGLE_CLIENT_ID=" in example and "JWT_SECRET=" in example
+    
+    # Verify the keys exist in the example file without enforcing empty values
+    assert "GOOGLE_CLIENT_ID=" in example
+    assert "JWT_SECRET=" in example

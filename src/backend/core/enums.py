@@ -18,6 +18,7 @@ class VehicleStatus(str, Enum):
     CHARGING = "charging"
     MAINTENANCE = "maintenance"
     OFFLINE = "offline"
+    RELOCATING = "relocating"   # Member 3 (UC03/UC-OP04): locked by a relocation order, hidden from students
 
 
 class ChargingPointStatus(str, Enum):

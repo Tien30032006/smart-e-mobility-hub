@@ -43,6 +43,10 @@
     <h2 data-i18n="charging.monitor"></h2><p id="live-state" class="muted" data-i18n="charging.autoRefresh"></p>
     <section id="points"></section>
     <h2 data-i18n="charging.currentQueue"></h2><section id="queue" class="card charging-scroll"></section>
+    <!-- Member 3 (UC-OP08 / UC-OP09): operator oversight of the allocation. Data: /api/operator/charging/{hub} -->
+    <h2 data-i18n="og.title"></h2><p class="muted" data-i18n="og.desc"></p>
+    <section class="card charging-scroll"><div class="charging-actions"><button type="button" id="og-run" data-i18n="og.run"></button></div><div id="og-queue"></div></section>
+    <h2 data-i18n="og.audit"></h2><section id="og-audit" class="card charging-scroll"></section>
   </main>
   <script src="/shared/api-client.js"></script>
   <script src="/app/assets/js/main.js"></script>
@@ -139,9 +143,27 @@
         message(t('charging.saved'));await refresh();
       }));
     }
+    let lastOversight=null;
+    function drawOversight(v) {
+      lastOversight=v;
+      const reason=r=>t('og.reason.'+r.code,r.params);
+      $('og-queue').innerHTML=v.queue.length?`<table><thead><tr><th>${e(t('og.rank'))}</th><th>${e(t('og.col.vehicle'))}</th><th>${e(t('charging.battery'))}</th>
+        <th>${e(t('charging.priority'))}</th><th>${e(t('charging.point'))}</th><th>${e(t('charging.status'))}</th><th>${e(t('og.why'))}</th></tr></thead><tbody>`+
+        v.queue.map(r=>`<tr><td>${r.rank}</td><td>${e(r.vehicle_id)}</td><td>${r.battery_level===null?'—':r.battery_level+'%'}${r.above_safe_threshold?` <span class="badge warn">${e(t('og.safe'))}</span>`:''}</td>
+        <td>${r.priority}${r.manual_override?` <span class="badge info">${e(t('charging.override'))}</span>`:''}</td><td>${e(r.point_id||'—')}</td>
+        <td>${e(t('charging.status.'+r.status))}</td><td>${e(reason(r.reason))}</td></tr>`).join('')+'</tbody></table>':e(t('charging.empty'));
+      $('og-audit').innerHTML=v.overrides.length?`<table><thead><tr><th>${e(t('og.col.when'))}</th><th>${e(t('og.col.operator'))}</th><th>${e(t('og.col.vehicle'))}</th><th>${e(t('og.col.reason'))}</th></tr></thead><tbody>`+
+        v.overrides.map(a=>`<tr><td>${e(fmt(a.timestamp))}</td><td>${e(a.operator_id)}</td><td>${e(a.vehicle_id||a.hub_id||'—')}</td><td>${e(a.reason||a.action)}</td></tr>`).join('')+'</tbody></table>':e(t('og.noAudit'));
+    }
+    $('og-run').onclick=event=>action(event.currentTarget,async()=>{
+      await API.post('/api/operator/charging/'+encodeURIComponent(selectedHub)+'/run');
+      message(t('og.ran'));await refresh();
+    });
+    document.addEventListener('langchange',()=>lastOversight&&drawOversight(lastOversight));
     async function refresh() {
       if(!selectedHub)return;
       await Promise.all([
+        Hub.render($('og-queue'),API.get('/api/operator/charging/'+encodeURIComponent(selectedHub)),drawOversight),
         Hub.render($('points'),API.get('/api/charging/points?hub_id='+encodeURIComponent(selectedHub)),drawPoints),
         Hub.render($('queue'),API.get('/api/charging/queue/'+encodeURIComponent(selectedHub)),drawQueue)
       ]);

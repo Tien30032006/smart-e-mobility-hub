@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="page.redistribution.title">Vehicle Redistribution</title>
+  <script src="/shared/i18n.js"></script>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .rd-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:16px; }
+    .rd-fields label { display:flex; flex-direction:column; gap:6px; }
+    .rd-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .rd-check { display:flex; align-items:center; gap:10px; min-height:44px; }
+    .rd-check input { width:20px; min-height:20px; }
+    .rd-plan { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); }
+  </style>
+</head>
+<body data-role="operator">
+  <!-- OWNER: Member 3   USE CASES: UC03, UC-OP04
+       Data: GET /api/operator/redistribution/{proposals,candidates,orders}, POST .../orders (+ /assign /reject /complete /cancel) -->
+  <nav id="nav"></nav>
+  <main>
+    <header class="page-head"><h1 data-i18n="page.redistribution.title"></h1><p class="muted" data-i18n="page.redistribution.desc"></p></header>
+    <section class="card"><h2 style="margin-top:0" data-i18n="rd.proposals"></h2><div id="proposals"></div></section>
+    <section class="card">
+      <div class="rd-fields"><div id="from-box"></div><div id="to-box"></div></div>
+      <div id="cands" style="margin-top:16px"></div>
+    </section>
+    <h2 data-i18n="rd.orders"></h2>
+    <div id="orders"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/shared/stream.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init(); Hub.liveBadge();
+    const E = Hub.esc, T = (k, v) => E(Hub.t(k, v)), $ = id => document.getElementById(id);
+    const TONE = { pending: 'warn', assigned: '', done: '', cancelled: 'bad' };
+    let hubs = [], from = '', to = '', cands = null, picked = new Set(), orders = [], proposals = [];
+    const hubName = id => { const h = hubs.find(x => x.hub_id === id); return h ? I18n.hubName(h) : id; };
+    const base = '/api/operator/redistribution';
+
+    function drawProposals() {
+      $('proposals').innerHTML = proposals.length ? proposals.map((p, i) => `<div class="rd-plan"><div><b>${E(hubName(p.from_hub))} → ${E(hubName(p.to_hub))}</b> · ${p.vehicle_ids.length} ${T('rd.col.vehicles').toLowerCase()} (${E(p.vehicle_ids.join(', '))})<br><span class="muted">${E(p.reason)}</span></div>
+          <button type="button" data-use="${i}">${T('rd.use')}</button></div>`).join('') : `<p class="muted">${T('rd.noProposals')}</p>`;
+      $('proposals').querySelectorAll('[data-use]').forEach(b => b.onclick = async () => {
+        b.disabled = true;
+        try { const o = await API.post(base + '/orders', proposals[+b.dataset.use]); Hub.toast(Hub.t('rd.created', { id: o.order_id }), 'ok'); await refresh(); }
+        catch (err) { Hub.toast(err.message, 'error'); b.disabled = false; }
+      });
+    }
+    function hubSelect(id, value, label) {
+      return `<label for="${id}">${T(label)}<select id="${id}"><option value=""></option>${hubs.map(h => `<option value="${E(h.hub_id)}"${h.hub_id === value ? ' selected' : ''}>${E(I18n.hubName(h))}</option>`).join('')}</select></label>`;
+    }
+    function drawPicker() {
+      $('from-box').innerHTML = hubSelect('from', from, 'rd.from'); $('to-box').innerHTML = hubSelect('to', to, 'rd.to');
+      $('from').onchange = e => { from = e.target.value; picked.clear(); loadCands(); };
+      $('to').onchange = e => { to = e.target.value; picked.clear(); loadCands(); };
+      drawCands();
+    }
+    function drawCands() {
+      const box = $('cands');
+      if (!from || !to || from === to || !cands) { box.innerHTML = `<p class="muted">${T('rd.pick')}</p>`; return; }
+      const over = picked.size > cands.free_spaces;
+      box.innerHTML = `<h3 style="margin:0 0 8px">${T('rd.movable')}</h3><p class="muted" style="margin:0 0 8px">${T('rd.free', { n: cands.free_spaces })}</p>` +
+        (cands.vehicles.length ? cands.vehicles.map(v => `<label class="rd-check"><input type="checkbox" data-v="${E(v.vehicle_id)}"${picked.has(v.vehicle_id) ? ' checked' : ''}>
+            <span><b>${E(v.vehicle_id)}</b> · ${E(v.model || v.vehicle_type)} · ${v.battery_level}%</span></label>`).join('') : `<p class="muted">${T('rd.noMovable')}</p>`) +
+        `<div class="rd-fields" style="margin-top:12px"><label>${T('rd.reason')}<input id="reason" maxlength="200"></label></div>
+         <p style="margin:12px 0 0"><button type="button" id="create"${picked.size && !over ? '' : ' disabled'}>${T('rd.create')} (${picked.size})</button></p>
+         ${over ? `<p class="badge bad" role="alert">${T('rd.free', { n: cands.free_spaces })}</p>` : ''}`;
+      box.querySelectorAll('[data-v]').forEach(c => c.onchange = () => { c.checked ? picked.add(c.dataset.v) : picked.delete(c.dataset.v); const r = $('reason').value; drawCands(); $('reason').value = r; });
+      const btn = $('create'); if (btn) btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const o = await API.post(base + '/orders', { from_hub: from, to_hub: to, vehicle_ids: [...picked], reason: $('reason').value });
+          Hub.toast(Hub.t('rd.created', { id: o.order_id }), 'ok'); picked.clear(); await refresh();
+        } catch (err) { Hub.toast(err.message, 'error'); await loadCands(); }       // e.g. a vehicle was just reserved: reload the list
+      };
+    }
+    function drawOrders() {
+      $('orders').innerHTML = orders.length ? `<div class="tablewrap"><table><thead><tr><th>${T('rd.col.order')}</th><th>${T('rd.col.route')}</th><th>${T('rd.col.vehicles')}</th><th>${T('rd.col.status')}</th><th>${T('rd.col.action')}</th></tr></thead><tbody>` +
+        orders.map(o => { const live = o.status === 'pending' || o.status === 'assigned'; return `<tr><td><b>${E(o.order_id)}</b><br><span class="muted">${E(o.reason || '')}</span></td>
+          <td>${E(hubName(o.from_hub))} → ${E(hubName(o.to_hub))}</td><td>${E(o.vehicle_ids.join(', '))}</td>
+          <td><span class="badge ${TONE[o.status] || ''}">${T('rd.status.' + o.status)}</span></td>
+          <td><div class="rd-actions">${o.status === 'pending' ? `<button type="button" class="secondary" data-a="assign" data-id="${E(o.order_id)}">${T('rd.assign')}</button><button type="button" class="secondary" data-a="reject" data-id="${E(o.order_id)}">${T('rd.rejectBtn')}</button>` : ''}
+            ${live ? `<button type="button" data-a="complete" data-id="${E(o.order_id)}">${T('rd.complete')}</button><button type="button" class="secondary" data-a="cancel" data-id="${E(o.order_id)}">${T('rd.cancel')}</button>` : '—'}</div></td></tr>`; }).join('') + '</tbody></table></div>'
+        : `<div class="card"><p class="muted">${T('rd.noOrders')}</p></div>`;
+      const MSG = { assign: 'rd.assigned', reject: 'rd.rejected', complete: 'rd.done', cancel: 'rd.cancelled' };
+      $('orders').querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
+        const a = b.dataset.a; let body;
+        if (a === 'reject') { const reason = prompt(Hub.t('rd.rejectReason')); if (reason === null) return; body = { reason }; }
+        b.disabled = true;
+        try { await API.post(`${base}/orders/${encodeURIComponent(b.dataset.id)}/${a}`, body); Hub.toast(Hub.t(MSG[a]), 'ok'); await refresh(); }
+        catch (err) { Hub.toast(err.message, 'error'); b.disabled = false; }
+      });
+    }
+    async function loadCands() {
+      cands = null; drawCands();
+      if (from && to && from !== to) { try { cands = await API.get(`${base}/candidates?from_hub=${encodeURIComponent(from)}&to_hub=${encodeURIComponent(to)}`); } catch (err) { Hub.toast(err.message, 'error'); } }
+      drawCands();
+    }
+    async function refresh() {
+      [proposals, orders] = await Promise.all([API.get(base + '/proposals'), API.get(base + '/orders')]);
+      drawProposals(); drawOrders(); await loadCands();
+    }
+    (async () => {
+      try { hubs = await API.get('/api/hubs'); } catch (e) {}
+      drawPicker();
+      Hub.render($('orders'), Promise.all([API.get(base + '/proposals'), API.get(base + '/orders')]), ([p, o]) => { proposals = p; orders = o; drawProposals(); drawOrders(); });
+    })();
+    document.addEventListener('langchange', () => { drawProposals(); drawPicker(); drawOrders(); });
+    ['hub_updated', 'vehicle_updated'].forEach(n => Stream.on(n, () => { if (!picked.size) refresh().catch(() => {}); }));
+  </script>
+</body>
+</html>
