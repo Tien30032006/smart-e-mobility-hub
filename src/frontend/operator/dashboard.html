@@ -6,10 +6,18 @@
   <title data-i18n="ops.title">Network monitoring</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .pin.offline .dot { background: #8a8f98 !important; box-shadow: none !important; }
+    .pin.offline .tag { opacity: .85; }
+    .badge.off { background: var(--line); color: var(--muted); }
+    .banner-off { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--line); color: var(--ink); font-weight: 600; }
+    .mini-list { display: grid; gap: 6px; margin-top: 8px; }
+    .mini-list .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .alert-row { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+  </style>
 </head>
 <body data-role="operator">
-  <!-- OWNER: Member 4 (UC01)  UI v2: desktop console. Currently aggregates /api/hubs;
-       TODO(Member 4): switch to GET /api/operations/dashboard when implemented. -->
+  <!-- OWNER: Member 3 (UC01 Dashboard Monitoring). Data: GET /api/operator/dashboard + GET /api/operator/hubs/{id} -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head pagebar">
@@ -19,52 +27,81 @@
     <div id="app"></div>
   </main>
   <script src="/shared/api-client.js"></script>
+  <script src="/shared/stream.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
-    Hub.init();
-    let hubs = [], sel = null, stamp = new Date();
+    Hub.init(); Hub.liveBadge();
+    let data = null, sel = null, stamp = new Date(), detail = null, detailFor = null;
     const E = Hub.esc, T = (k, v) => E(Hub.t(k, v));
-    const status = h => h.free_spaces === 0 || h.near_capacity ? ['bad', 'ops.statusBusy'] : h.vehicles_available <= 2 ? ['warn', 'ops.statusLow'] : ['', 'ops.statusOk'];
+    const hubs = () => (data ? data.hubs : []);
+    const status = h => h.tone === 'offline' ? ['off', 'op.offline'] : h.tone === 'busy' ? ['bad', 'ops.statusBusy'] : h.tone === 'low' ? ['warn', 'ops.statusLow'] : ['', 'ops.statusOk'];
+    const SEV = { critical: 'bad', warning: 'warn', info: 'info' };
+    const BAND = { low: 'bad', medium: 'warn', high: '' };
+
+    function detailHtml(cur) {
+      if (!detail || detailFor !== cur.hub_id) return `<p class="muted">${T('common.loading')}</p>`;
+      const d = detail;
+      return `<h3 style="margin:20px 0 8px;font-size:16px">${T('op.vehiclesHere')}</h3>` + (d.vehicles.length ?
+        `<div class="tablewrap"><table><thead><tr><th>${T('op.col.id')}</th><th>${T('op.col.battery')}</th><th>${T('op.col.state')}</th></tr></thead><tbody>` +
+        d.vehicles.map(v => `<tr><td>${E(v.vehicle_id)}</td><td><span class="badge ${BAND[v.battery_band]}">${v.battery_level}% · ${T('op.battery.' + v.battery_band)}</span></td><td>${T('op.vs.' + v.status)}</td></tr>`).join('') + '</tbody></table></div>'
+        : `<p class="muted">${T('op.noVehicles')}</p>`) +
+        `<h3 style="margin:20px 0 8px;font-size:16px">${T('op.portsHere')}</h3><div class="mini-list">` +
+        d.charging_points.map(p => `<div class="row"><span>${E(p.point_id)}${p.vehicle_id ? ' · ' + E(p.vehicle_id) : ''}</span><span class="badge ${p.status === 'out_of_service' ? 'bad' : p.status === 'available' ? '' : 'warn'}">${T('charging.status.' + p.status)}</span></div>`).join('') + '</div>';
+    }
 
     function draw() {
+      if (!data) return;
       document.getElementById('sub').textContent = Hub.t('ops.sub') + ' · ' + Hub.t('ops.updated', { t: stamp.toLocaleTimeString(I18n.lang) });
-      const sum = f => hubs.reduce((a, h) => a + f(h), 0);
-      const k = [['ops.kpiVehicles', sum(h => h.vehicles_available)], ['ops.kpiCharging', sum(h => h.charging_points_total - h.charging_points_free)],
-                 ['ops.kpiSpaces', sum(h => h.free_spaces)], ['ops.kpiHubs', hubs.length]];
-      const cur = hubs.find(h => h.hub_id === sel) || hubs[0];
-      const att = hubs.filter(h => status(h)[0]);
+      const hs = hubs(), t = data.totals;
+      const k = [['ops.kpiVehicles', t.vehicles_available], ['ops.kpiCharging', hs.reduce((a, h) => a + h.charging_points_in_use, 0)],
+                 ['ops.kpiSpaces', t.free_spaces], ['ops.kpiHubs', hs.length - t.hubs_offline],
+                 ['op.kpiAlerts', t.alerts_open], ['op.kpiIncidents', t.incidents_open], ['op.kpiOrders', t.orders_active]];
+      const cur = hs.find(h => h.hub_id === sel) || hs[0];
+      const att = hs.filter(h => status(h)[0]);
       document.getElementById('app').innerHTML =
         `<section class="kpis">${k.map(([l, n]) => `<article class="card kpi"><div class="n" data-n="${n}">0</div><div class="l">${T(l)}</div></article>`).join('')}</section>
         <div class="console">
           <section class="card"><h2 style="margin:0">${T('ops.map')}</h2><p class="muted" style="margin:2px 0 14px">${T('ops.mapHint')}</p>
-            ${Hub.mapHtml(hubs, h => E(Hub.t('hub.vehShort', { n: h.vehicles_available }) + ' · ' + Hub.t('hub.spacesShort', { n: h.free_spaces })), cur && cur.hub_id)}
-            <div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span></div></section>
-          <aside class="card detail">${cur ? (() => { const p = Math.round(cur.utilization * 100), [tn, sk] = status(cur); return `
+            ${Hub.mapHtml(hs, h => E(h.tone === 'offline' ? Hub.t('op.offline') : Hub.t('hub.vehShort', { n: h.vehicles_available }) + ' · ' + Hub.t('hub.spacesShort', { n: h.free_spaces })), cur && cur.hub_id)}
+            <div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span><span class="badge off">${T('op.offline')}</span></div></section>
+          <aside class="card detail">${cur ? (() => { const p = Math.round(cur.occupancy_rate * 100), [tn, sk] = status(cur); return `
             <div class="pagebar"><h2 style="margin:0">${E(I18n.hubName(cur))}</h2><span class="badge ${tn}">${T(sk)}</span></div>
+            ${cur.tone === 'offline' ? `<p class="banner-off" role="status">${T('op.offlineMsg', { name: I18n.hubName(cur) })}<br><span class="muted">${T('op.stale')}</span></p>` : ''}
             <div class="big"><div><div class="n">${cur.vehicles_available}</div><span class="muted">${T('ops.col.vehicles')}</span></div>
               <div><div class="n">${cur.free_spaces}</div><span class="muted">${T('ops.kpiSpaces')}</span></div></div>
-            <div class="bar ${cur.near_capacity ? 'hot' : ''}" role="progressbar" aria-label="${T('hub.utilization')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><i style="width:${p}%"></i></div>
-            <p class="muted" style="margin:8px 0 0">${p}${T('hub.full')} · ${T('hub.freePorts', { n: cur.charging_points_free })}</p>
+            <div class="bar ${cur.near_capacity ? 'hot' : ''}" role="progressbar" aria-label="${T('op.occupancy')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><i style="width:${p}%"></i></div>
+            <p class="muted" style="margin:8px 0 0">${T('op.occupancy')}: ${p}% · ${T('hub.freePorts', { n: cur.charging_points_free })}</p>
+            ${detailHtml(cur)}
             <h3 style="margin:20px 0 8px;font-size:16px">${T('ops.attention')}</h3>
             ${att.length ? att.map(h => `<p style="margin:6px 0;display:flex;justify-content:space-between;gap:8px">${E(I18n.hubName(h))}<span class="badge ${status(h)[0]}">${T(status(h)[1])}</span></p>`).join('') : `<p class="muted">${T('ops.allGood')}</p>`}`; })() : ''}</aside>
         </div>
+        <h2>${T('op.alertsPanel')}</h2>
+        <section class="card">${data.alerts.length ? data.alerts.map(a => `<div class="alert-row"><span><span class="badge ${SEV[a.severity] || ''}">${T('al.severity.' + a.severity)}</span> ${E(a.message)}</span></div>`).join('') : `<p class="muted">${T('op.noAlerts')}</p>`}
+          <p style="margin:12px 0 0"><a href="/app/operator/alerts.html">${T('op.viewAll')}</a></p></section>
         <h2>${T('ops.table')}</h2>
         <div class="tablewrap"><table><thead><tr><th>${T('ops.col.hub')}</th><th>${T('ops.col.vehicles')}</th><th>${T('ops.col.parking')}</th><th>${T('ops.col.ports')}</th><th>${T('ops.col.status')}</th></tr></thead><tbody>
-          ${hubs.map(h => { const p = Math.round(h.utilization * 100), [tn, sk] = status(h);
+          ${hs.map(h => { const p = Math.round(h.occupancy_rate * 100), [tn, sk] = status(h);
             return `<tr data-hub="${E(h.hub_id)}" class="${cur && cur.hub_id === h.hub_id ? 'sel' : ''}"><td><b>${E(I18n.hubName(h))}</b></td><td>${h.vehicles_available}</td>
               <td>${h.capacity - h.free_spaces} / ${h.capacity} · ${p}%<span class="mini"><i style="width:${p}%"></i></span></td>
-              <td>${h.charging_points_total - h.charging_points_free} / ${h.charging_points_total}</td><td><span class="badge ${tn}">${T(sk)}</span></td></tr>`; }).join('')}
+              <td>${h.charging_points_in_use} / ${h.charging_points_total}</td><td><span class="badge ${tn}">${T(sk)}</span></td></tr>`; }).join('')}
         </tbody></table></div>`;
       const root = document.getElementById('app');
       root.querySelectorAll('.kpi .n').forEach(n => Hub.countUp(n, +n.dataset.n));
-      root.querySelectorAll('.pin, tbody tr').forEach(e => e.onclick = () => { sel = e.dataset.hub; draw(); });
+      hs.forEach(h => { if (h.tone === 'offline') { const pin = root.querySelector(`.pin[data-hub="${CSS.escape(h.hub_id)}"]`); if (pin) pin.classList.add('offline'); } });
+      root.querySelectorAll('.pin, tbody tr[data-hub]').forEach(e => e.onclick = () => { sel = e.dataset.hub; draw(); loadDetail(); });
       document.getElementById('refresh').innerHTML = Hub.icon('refresh') + T('ops.refresh');
     }
-    async function load() { hubs = await API.get('/api/hubs'); stamp = new Date(); draw(); }
+    async function loadDetail() {
+      const id = (hubs().find(h => h.hub_id === sel) || hubs()[0] || {}).hub_id;
+      if (!id) return;
+      if (detailFor !== id) { detail = null; detailFor = id; draw(); }
+      try { const d = await API.get('/api/operator/hubs/' + encodeURIComponent(id)); if (detailFor === id) { detail = d; draw(); } } catch (e) {}
+    }
+    async function load() { data = await API.get('/api/operator/dashboard'); stamp = new Date(); draw(); loadDetail(); }
     document.getElementById('refresh').onclick = () => load().catch(() => {});
-    document.addEventListener('langchange', () => hubs.length && draw());
-    Hub.render(document.getElementById('app'), API.get('/api/hubs'), d => { hubs = d; stamp = new Date(); draw(); });
-    setInterval(() => load().catch(() => {}), 30000);   // mockup: refresh every 30 s
+    document.addEventListener('langchange', () => data && draw());
+    Hub.render(document.getElementById('app'), API.get('/api/operator/dashboard'), d => { data = d; stamp = new Date(); draw(); loadDetail(); });
+    ['hub_updated', 'vehicle_updated', 'alert_created'].forEach(n => Stream.on(n, () => load().catch(() => {})));   // falls back to polling by itself
   </script>
 </body>
 </html>

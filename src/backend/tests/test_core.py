@@ -74,5 +74,21 @@ def test_shared_hub_endpoints(client):
 
 
 def test_unfinished_endpoint_reports_owner(client):
+    """Every stub was implemented, so exercise the 501 contract (core/todo.py) with a throw-away route."""
+    from src.backend.app import app
+    from src.backend.core.todo import todo
+
+    @app.get("/api/_test/unfinished")
+    def _unfinished():
+        todo("Member 3", "UC-TEST", "demo hint")
+
+    try:
+        r = client.get("/api/_test/unfinished")
+    finally:
+        app.router.routes = [x for x in app.router.routes if getattr(x, "path", "") != "/api/_test/unfinished"]
+    assert r.status_code == 501 and r.json()["owner"] == "Member 3" and r.json()["use_case"] == "UC-TEST"
+
+
+def test_operator_dashboard_is_live(client):
     r = client.get("/api/operator/dashboard", headers=OPERATOR)
-    assert r.status_code == 501 and r.json()["owner"] == "Member 3"
+    assert r.status_code == 200 and r.json()["totals"]["hubs"] == 4

@@ -6,34 +6,96 @@
   <title data-i18n="page.incidents.title">Incident Handling</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .inc-form { display:grid; gap:12px; margin-top:12px; max-width:560px; }
+    .inc-form label { display:flex; flex-direction:column; gap:6px; }
+    .inc-actions { display:flex; gap:10px; flex-wrap:wrap; }
+    #panel:empty { display:none; }
+  </style>
 </head>
 <body data-role="operator">
   <!-- OWNER: Member 3   USE CASES: UC05, UC-OP06, UC-OP07
-       TODO: Incident list, Handle button (put the device into maintenance, create a ticket, cancel affected reservations).
-       Rules: keep <nav id="nav"> and the shared scripts (i18n.js in <head>, api-client.js, main.js); call Hub.init() first;
-       show API results with Hub.render(el, promise, draw) and build the DOM inside draw() so it re-renders on language change.
-       All visible text must use data-i18n keys / Hub.t() - add keys to BOTH languages in /shared/i18n.js.
-       Put page-specific CSS/JS in this file only. -->
+       Data: GET /api/operator/incidents, GET .../{id}/impact, POST .../{id}/handle, POST .../{id}/resolve -->
   <nav id="nav"></nav>
   <main>
-    <header class="page-head">
-      <h1 data-i18n="page.incidents.title">Incident Handling</h1>
-      <p class="muted" data-i18n="page.incidents.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 3</span></span>
-        <span class="chip"><span><span data-i18n="common.useCases"></span>: UC05, UC-OP06, UC-OP07</span></span>
-      </div>
+    <header class="page-head pagebar">
+      <div><h1 data-i18n="page.incidents.title"></h1><p class="muted" data-i18n="page.incidents.desc"></p></div>
+      <div class="seg" id="filter" role="group"></div>
     </header>
-    <div id="app" class="card"></div>
+    <section id="panel" class="card" aria-live="polite"></section>
+    <div id="app"></div>
   </main>
   <script src="/shared/api-client.js"></script>
+  <script src="/shared/stream.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
-    Hub.init();
-    // TODO(Member 3): replace this placeholder with the real UI for UC05, UC-OP06, UC-OP07.
-    Hub.render(document.getElementById('app'), API.get('/api/operator/incidents'), data => {
-      document.getElementById('app').innerHTML = '<p class="muted">' + Hub.esc(Hub.t('common.pending')) + '</p><pre>' + Hub.esc(JSON.stringify(data, null, 2)) + '</pre>';
-    });
+    Hub.init(); Hub.liveBadge();
+    const E = Hub.esc, T = (k, v) => E(Hub.t(k, v)), $ = id => document.getElementById(id);
+    const TONE = { open: 'bad', in_maintenance: 'warn', resolved: '' };
+    let filter = 'active', rows = [], hubs = {}, selected = null;
+    const hubName = id => hubs[id] ? I18n.hubName(hubs[id]) : (id || '—');
+    const when = iso => new Date(iso).toLocaleString(I18n.lang);
+
+    function drawFilter() {
+      $('filter').setAttribute('aria-label', Hub.t('page.incidents.title'));
+      $('filter').innerHTML = ['active', 'all'].map(f => `<button type="button" data-f="${f}" aria-pressed="${filter === f}">${T('inc.filter.' + f)}</button>`).join('');
+      $('filter').querySelectorAll('button').forEach(b => b.onclick = () => { filter = b.dataset.f; selected = null; load(); });
+    }
+    function drawPanel() {
+      const inc = rows.find(r => r.incident_id === selected);
+      if (!inc || inc.status !== 'open') { $('panel').innerHTML = ''; return; }
+      $('panel').innerHTML = `<h2 style="margin-top:0">${T('inc.form')} · ${E(inc.target_id)}</h2>
+        <p class="muted">${T('inc.type.' + inc.target_type)} · ${E(hubName(inc.hub_id))} · ${E(inc.category)}</p>
+        ${inc.description ? `<p>${E(inc.description)}</p>` : ''}
+        <form class="inc-form" id="hform">
+          <label>${T('inc.priority')}<select name="priority">${['low', 'medium', 'high', 'critical'].map(p => `<option value="${p}"${p === 'medium' ? ' selected' : ''}>${T('inc.priority.' + p)}</option>`).join('')}</select></label>
+          <label>${T('inc.note')}<textarea name="note" rows="3" maxlength="500"></textarea></label>
+          <div class="inc-actions"><button type="submit">${T('inc.submit')}</button><button type="button" class="secondary" id="hcancel">${T('common.cancel')}</button></div>
+        </form>`;
+      $('hcancel').onclick = () => { selected = null; drawPanel(); };
+      $('hform').onsubmit = async ev => {
+        ev.preventDefault();
+        const f = ev.target.elements, body = { note: f.note.value, priority: f.priority.value, confirm_cancel: false };
+        const btn = ev.submitter; btn.disabled = true;
+        try {
+          const impact = await API.get(`/api/operator/incidents/${encodeURIComponent(inc.incident_id)}/impact`);
+          if (impact.blocked_reason) throw new Error(impact.blocked_reason);
+          if (impact.requires_confirmation) {                       // UC05 alt 5a
+            const ok = await Hub.confirmDialog(Hub.t('inc.reservedTitle'), Hub.t('inc.reservedBody', { n: impact.affected_reservations.length }));
+            if (!ok) { btn.disabled = false; return; }
+            body.confirm_cancel = true;
+          }
+          const out = await API.post(`/api/operator/incidents/${encodeURIComponent(inc.incident_id)}/handle`, body);
+          Hub.toast(Hub.t('inc.handled', { id: out.ticket.ticket_id }) + (out.cancelled_reservations.length ? ' · ' + Hub.t('inc.cancelledN', { n: out.cancelled_reservations.length }) : ''), 'ok');
+          selected = null; await load();
+        } catch (err) { Hub.toast(err.message, 'error'); btn.disabled = false; }
+      };
+    }
+    function draw(list) {
+      rows = list; drawFilter(); drawPanel();
+      if (!rows.length) { $('app').innerHTML = `<div class="card"><p class="muted">${T('inc.empty')}</p></div>`; return; }
+      $('app').innerHTML = `<div class="tablewrap"><table><thead><tr><th>${T('inc.col.device')}</th><th>${T('inc.col.hub')}</th><th>${T('inc.col.category')}</th><th>${T('inc.col.reports')}</th><th>${T('inc.col.status')}</th><th>${T('inc.col.when')}</th><th>${T('inc.col.action')}</th></tr></thead><tbody>` +
+        rows.map(i => `<tr class="${i.incident_id === selected ? 'sel' : ''}">
+          <td><b>${E(i.target_id)}</b><br><span class="muted">${T('inc.type.' + i.target_type)} · ${T('inc.source.' + i.source)}</span></td>
+          <td>${E(hubName(i.hub_id))}</td><td>${E(i.category)}</td><td>${i.report_count}</td>
+          <td><span class="badge ${TONE[i.status] || ''}">${T('inc.status.' + i.status)}</span>${i.ticket ? `<br><span class="muted">${T('inc.ticket')} ${E(i.ticket.ticket_id)} · ${T('inc.priority.' + i.ticket.priority)}</span>` : ''}</td>
+          <td>${E(when(i.created_at))}</td>
+          <td>${i.status === 'open' ? `<button type="button" data-h="${E(i.incident_id)}">${T('inc.handle')}</button>`
+              : i.status === 'in_maintenance' ? `<button type="button" class="secondary" data-r="${E(i.incident_id)}">${T('inc.resolve')}</button>` : '—'}</td></tr>`).join('') + '</tbody></table></div>';
+      $('app').querySelectorAll('[data-h]').forEach(b => b.onclick = () => { selected = b.dataset.h; drawPanel(); draw(rows); $('panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+      $('app').querySelectorAll('[data-r]').forEach(b => b.onclick = async () => {
+        b.disabled = true;
+        try { await API.post(`/api/operator/incidents/${encodeURIComponent(b.dataset.r)}/resolve`); Hub.toast(Hub.t('inc.resolvedMsg'), 'ok'); await load(); }
+        catch (err) { Hub.toast(err.message, 'error'); b.disabled = false; }
+      });
+    }
+    async function load() { draw(await API.get('/api/operator/incidents?status=' + filter)); }
+    (async () => {
+      try { (await API.get('/api/hubs')).forEach(h => hubs[h.hub_id] = h); } catch (e) {}
+      Hub.render($('app'), API.get('/api/operator/incidents?status=' + filter), draw);
+    })();
+    document.addEventListener('langchange', () => draw(rows));
+    ['alert_created', 'hub_updated'].forEach(n => Stream.on(n, () => { if (!selected) load().catch(() => {}); }));
   </script>
 </body>
 </html>

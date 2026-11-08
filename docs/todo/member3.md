@@ -12,27 +12,27 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ### P0 – do first; others depend on it / foundation
 
-- [ ] **UC01 dashboard** — `service.get_dashboard`, `get_hub_detail`
+- [x] **UC01 dashboard** — `service.get_dashboard`, `get_hub_detail`
   - Start from `network.get_network_status()` (it already has per-Hub KPIs); add alerts, charging points, map markers.
-- [ ] **UC02 alerts** — `service.scan_for_alerts`, `list_alerts`, `acknowledge_alert`
+- [x] **UC02 alerts** — `service.scan_for_alerts`, `list_alerts`, `acknowledge_alert`
   - Near-full Hub (`hub.is_near_capacity()`), mass low battery, disconnected charging points; de-duplicate; emit `ALERT_RAISED`/`HUB_NEAR_CAPACITY`.
-- [ ] **UC03 + UC-OP04 vehicle redistribution** — `redistribution.py`, `HubNetworkManager.redistribute_vehicles`
+- [x] **UC03 + UC-OP04 vehicle redistribution** — `redistribution.py`, `HubNetworkManager.redistribute_vehicles`
   - `propose_redistribution` → `create_relocation_order` → complete with `network.move_vehicle`. Define the **`plan` format** (Member 4 reuses it).
 
 ### P1 – main features for the demo
 
-- [ ] **UC05 + UC-OP06 incident handling** — `incident_handler.on_issue_reported`, `handle_incident`, `create_maintenance_ticket`
+- [x] **UC05 + UC-OP06 incident handling** — `incident_handler.on_issue_reported`, `handle_incident`, `create_maintenance_ticket`
   - Listen to `ISSUE_REPORTED` (emitted by Member 1); vehicle → MAINTENANCE, charging point → OUT_OF_SERVICE (call Member 2's function if it is charging); create a ticket.
-- [ ] **UC-OP07 cancel reservations affected by an incident** — `cancel_affected_reservations`
+- [x] **UC-OP07 cancel reservations affected by an incident** — `cancel_affected_reservations`
   - Call Member 1's `reservation.service.cancel_reservation(by_system=True)` + suggest a replacement vehicle.
-- [ ] **UC-OP08 + OP09 charging oversight / override** — `charging_oversight.py`
+- [x] **UC-OP08 + OP09 charging oversight / override** — `charging_oversight.py`
   - **Do not rewrite the algorithm** – call Member 2's `scheduler`; keep an override log (who, why, when).
 
 ### P2 – polish
 
-- [ ] **`register_event_handlers`** — register `bus.subscribe` handlers at startup (called from `app.py` – notify the team when editing it)
-- [ ] **UI** — dashboard (table + utilization bars), incidents page, the charging-priority section of `operator/charging.html`
-- [ ] **Relocation order list** — `list_orders` + PENDING/ASSIGNED/DONE statuses
+- [x] **`register_event_handlers`** — register `bus.subscribe` handlers at startup (called from `app.py` – notify the team when editing it)
+- [x] **UI** — dashboard (table + utilization bars), incidents page, the charging-priority section of `operator/charging.html`
+- [x] **Relocation order list** — `list_orders` + PENDING/ASSIGNED/DONE statuses
 
 ## B. Personal documents (course requirement: each member covers their own use cases)
 
@@ -60,10 +60,10 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ## D. Minimum tests required
 
-- [ ] Dashboard: total KPIs match `network.get_network_status()`
-- [ ] A Hub exceeding 85% raises exactly 1 alert (no duplicates)
-- [ ] Redistribution never picks a vehicle that is reserved / in use / under maintenance
-- [ ] Incident handling: vehicle → MAINTENANCE + related reservations cancelled
+- [x] Dashboard: total KPIs match `network.get_network_status()`
+- [x] A Hub exceeding 85% raises exactly 1 alert (no duplicates)
+- [x] Redistribution never picks a vehicle that is reserved / in use / under maintenance
+- [x] Incident handling: vehicle → MAINTENANCE + related reservations cancelled
 
 ## E. Shared team work (you contribute too)
 
@@ -75,8 +75,8 @@ Every place that needs work already has a stub function that calls `todo(...)` w
 
 ## F. Definition of Done for each use case
 
-- [ ] The `service` function handles the main flow **and** the exception flows from the spec
-- [ ] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
-- [ ] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
-- [ ] The UI page is usable (no more yellow TODO box)
+- [x] The `service` function handles the main flow **and** the exception flows from the spec
+- [x] The endpoint returns the correct error codes (400/404/409) and no longer returns 501
+- [x] At least 1 test for the main flow and 1 for an error flow; `pytest` is green
+- [x] The UI page is usable (no more yellow TODO box)
 - [ ] Sequence + activity diagrams match the real code

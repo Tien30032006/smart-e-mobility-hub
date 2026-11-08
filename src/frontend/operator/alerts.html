@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="page.alerts.title">Alert Center</title>
+  <script src="/shared/i18n.js"></script>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+  <style>
+    .al-list { display:grid; gap:12px; }
+    .al-item { border-left:5px solid var(--line); }
+    .al-item.critical { border-left-color: var(--danger); } .al-item.warning { border-left-color: var(--warn); } .al-item.info { border-left-color: var(--info); }
+    .al-head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; }
+    .al-meta { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0; }
+    .al-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .al-item ul { margin:6px 0 0; padding-left:20px; }
+  </style>
+</head>
+<body data-role="operator">
+  <!-- OWNER: Member 3   USE CASE: UC02 (Alert Center). Data: GET /api/operator/alerts -->
+  <nav id="nav"></nav>
+  <main>
+    <header class="page-head pagebar">
+      <div><h1 data-i18n="page.alerts.title"></h1><p class="muted" data-i18n="page.alerts.desc"></p></div>
+      <div class="seg" id="filter" role="group"></div>
+    </header>
+    <div id="app"></div>
+  </main>
+  <script src="/shared/api-client.js"></script>
+  <script src="/shared/stream.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init(); Hub.liveBadge();
+    const E = Hub.esc, T = (k, v) => E(Hub.t(k, v));
+    const SEV = { critical: 'bad', warning: 'warn', info: 'info' };
+    let filter = 'open', hubs = {}, view = [];
+    const when = iso => new Date(iso).toLocaleString(I18n.lang);
+    const hubName = id => { const h = hubs[id]; return h ? I18n.hubName(h) : (id || '—'); };
+
+    function drawFilter() {
+      const box = document.getElementById('filter');
+      box.setAttribute('aria-label', Hub.t('al.filter.open'));
+      box.innerHTML = ['open', 'handled', 'all'].map(f => `<button type="button" data-f="${f}" aria-pressed="${filter === f}">${T('al.filter.' + f)}</button>`).join('');
+      box.querySelectorAll('button').forEach(b => b.onclick = () => { filter = b.dataset.f; load(); });
+    }
+    function draw(rows) {
+      view = rows;
+      const root = document.getElementById('app');
+      drawFilter();
+      if (!rows.length) { root.innerHTML = `<div class="card"><p class="muted">${T(filter === 'open' ? 'op.noAlerts' : 'al.empty')}</p></div>`; return; }
+      root.innerHTML = '<div class="al-list">' + rows.map(a => `
+        <article class="card al-item ${E(a.severity)}" data-id="${E(a.alert_id)}">
+          <div class="al-head"><h2 style="margin:0;font-size:18px">${T('al.type.' + a.type)}</h2>
+            <span><span class="badge ${SEV[a.severity] || ''}">${T('al.severity.' + a.severity)}</span> <span class="badge">${T('al.status.' + a.status)}</span></span></div>
+          <p style="margin:8px 0 0">${E(a.message)}</p>
+          <div class="al-meta muted"><span>${T('al.hub')}: <b>${E(hubName(a.hub_id))}</b></span><span>·</span><span>${T('al.when')}: ${E(when(a.created_at))}</span></div>
+          ${a.cause ? `<p class="muted" style="margin:4px 0">${T('al.cause')}: ${E(a.cause)}</p>` : ''}
+          ${a.suggested_actions && a.suggested_actions.length ? `<b>${T('al.actions')}</b><ul>${a.suggested_actions.map(x => `<li>${E(x)}</li>`).join('')}</ul>` : ''}
+          <div class="al-actions">
+            ${a.status === 'unread' ? `<button type="button" data-ack="${E(a.alert_id)}">${T('al.ack')}</button>` : ''}
+            ${a.status === 'unread' || a.status === 'acknowledged' ? `<button type="button" class="secondary" data-res="${E(a.alert_id)}">${T('al.resolve')}</button>` : ''}
+          </div>
+        </article>`).join('') + '</div>';
+      root.querySelectorAll('[data-ack]').forEach(b => b.onclick = () => act(b, `/api/operator/alerts/${encodeURIComponent(b.dataset.ack)}/acknowledge`, 'al.acked'));
+      root.querySelectorAll('[data-res]').forEach(b => b.onclick = () => act(b, `/api/operator/alerts/${encodeURIComponent(b.dataset.res)}/resolve`, 'al.resolvedMsg'));
+    }
+    async function act(btn, path, okKey) {
+      btn.disabled = true;
+      try { await API.post(path); Hub.toast(Hub.t(okKey), 'ok'); await load(); }
+      catch (err) { Hub.toast(err.message, 'error'); btn.disabled = false; }
+    }
+    async function load() {
+      const list = await API.get('/api/operator/alerts?status=' + filter).catch(err => { throw err; });
+      draw(list);
+    }
+    async function boot() {
+      try { (await API.get('/api/hubs')).forEach(h => hubs[h.hub_id] = h); } catch (e) {}
+      Hub.render(document.getElementById('app'), API.get('/api/operator/alerts?status=' + filter), draw);
+    }
+    boot();
+    document.addEventListener('langchange', () => draw(view));
+    ['alert_created', 'hub_updated'].forEach(n => Stream.on(n, () => load().catch(() => {})));
+  </script>
+</body>
+</html>

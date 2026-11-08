@@ -176,7 +176,8 @@ class HubNetworkManager:
 
     # ---- class-diagram method owned by a member ---------------------------
     def redistribute_vehicles(self, from_hub: str, to_hub: str) -> bool:
-        todo("Member 3", "UC03", "delegate to modules/operations/redistribution.py; use move_vehicle()")
+        from ..modules.operations import redistribution
+        return redistribution.redistribute_hubs(from_hub, to_hub)
 
     # ---- snapshot for What-if ---------------------------------------------
     def snapshot(self) -> NetworkSnapshot:
