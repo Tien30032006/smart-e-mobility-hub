@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title data-i18n="menu.wallet">Student Wallet</title>
   <script src="/shared/i18n.js"></script>
@@ -57,8 +57,8 @@
   <nav id="nav"></nav>
   <main>
     <header class="page-head">
-      <h1 data-i18n="menu.wallet">Student Wallet</h1>
-      <p class="muted">Manage your e-mobility digital wallet, deposit holds, and simulated gateway top-ups.</p>
+      <h1 data-i18n="wallet.title">Student Wallet</h1>
+      <p class="muted" data-i18n="wallet.sub">Manage your e-mobility digital wallet, deposit holds, and simulated gateway top-ups.</p>
       <div class="chips">
         <span class="chip"><span><span data-i18n="common.owner"></span>: Member 1</span></span>
         <span class="chip"><span>Pipeline Demo U8</span></span>
@@ -70,15 +70,15 @@
     <div class="wallet-layout">
       <!-- Balance Card -->
       <div class="wallet-card">
-        <span class="muted" style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;">Current Balance</span>
+        <span class="muted" style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;" data-i18n="wallet.currBalance">Current Balance</span>
         <div class="balance-display" id="disp-balance">0 VND</div>
         <div style="display:flex; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
           <div>
-            <span class="muted" style="font-size:0.8rem;">Available to spend</span>
+            <span class="muted" style="font-size:0.8rem;" data-i18n="wallet.availRentals">Available for rentals & charging</span>
             <div style="font-weight:700; font-size:1.1rem; color:#10b981;" id="disp-available">0 VND</div>
           </div>
           <div>
-            <span class="muted" style="font-size:0.8rem;">Security deposit held</span>
+            <span class="muted" style="font-size:0.8rem;" data-i18n="wallet.heldDeposit">Held in Active Deposits:</span>
             <div style="font-weight:700; font-size:1.1rem; color:#f59e0b;" id="disp-held">0 VND</div>
           </div>
         </div>
@@ -86,27 +86,28 @@
 
       <!-- Top-up Card -->
       <div class="wallet-card">
-        <h2 style="font-size:1.15rem; margin-top:0;">Top Up Wallet (MoMo / VNPay)</h2>
-        <p class="muted" style="font-size:0.85rem;">Select an amount to test the simulated payment gateway callback.</p>
+        <h2 style="font-size:1.15rem; margin-top:0;" data-i18n="wallet.topUpTitle">Top Up Balance</h2>
+        <p class="muted" style="font-size:0.85rem;" data-i18n="wallet.topUpSub">Choose a quick amount or enter a custom value:</p>
         <div class="amount-chips">
-          <button type="button" class="amount-btn active" data-val="50000">50,000 VND</button>
-          <button type="button" class="amount-btn" data-val="100000">100,000 VND</button>
-          <button type="button" class="amount-btn" data-val="200000">200,000 VND</button>
-          <button type="button" class="amount-btn" data-val="500000">500,000 VND</button>
+          <button type="button" class="amount-btn active" data-val="50000">50.000 VND</button>
+          <button type="button" class="amount-btn" data-val="100000">100.000 VND</button>
+          <button type="button" class="amount-btn" data-val="200000">200.000 VND</button>
+          <button type="button" class="amount-btn" data-val="500000">500.000 VND</button>
         </div>
         <div style="margin-bottom:16px;">
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Custom Amount (VND)</label>
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;" data-i18n="wallet.customAmount">Custom Amount (VND)</label>
           <input type="number" id="inp-custom-amount" value="50000" min="10000" step="10000" style="width:100%; padding:10px 14px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink);">
         </div>
-        <button id="btn-submit-topup" class="button" style="width:100%;">
-          <i data-lucide="zap"></i> Top Up via Mock Checkout
+        <button id="btn-submit-topup" class="button" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+          <span id="topup-icon"></span>
+          <span data-i18n="wallet.btnTopUp">Top Up via Mock Checkout</span>
         </button>
       </div>
     </div>
 
     <!-- Transaction Ledger History -->
     <div class="card" style="margin-top:24px;">
-      <h2 style="font-size:1.15rem; margin-top:0;">Transaction History</h2>
+      <h2 style="font-size:1.15rem; margin-top:0;" data-i18n="wallet.historyTitle">Transaction History</h2>
       <div id="tx-history-container">
         <p class="muted" data-i18n="common.loading">Loading…</p>
       </div>
@@ -117,20 +118,35 @@
   <script src="/app/assets/js/main.js"></script>
   <script>
     Hub.init();
+    document.getElementById('topup-icon').innerHTML = Hub.icon('zap');
 
     let selectedAmount = 50000;
+    let lastWalletData = null;
+    let lastTxData = null;
+
+    function formatCurrency(amount) {
+      const locale = I18n.lang === 'vi' ? 'vi-VN' : 'en-US';
+      return (amount || 0).toLocaleString(locale) + ' VND';
+    }
 
     // Check if returned from mock checkout
     const urlParams = new URLSearchParams(window.location.search);
     const checkoutStatus = urlParams.get('checkout');
     if (checkoutStatus === 'success') {
       const notice = document.getElementById('notice-container');
-      notice.innerHTML = `<div class="card" style="background:#ecfdf5; color:#065f46; border-color:#a7f3d0; margin-bottom:16px;">Payment successful! Your wallet balance has been updated.</div>`;
+      notice.innerHTML = `<div class="card" style="background:#ecfdf5; color:#065f46; border-color:#a7f3d0; margin-bottom:16px;">${Hub.esc(I18n.t('wallet.successNotice'))}</div>`;
       setTimeout(() => { notice.innerHTML = ''; }, 6000);
     } else if (checkoutStatus === 'failed') {
       const notice = document.getElementById('notice-container');
-      notice.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;">Payment failed or cancelled by user.</div>`;
+      notice.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;">${Hub.esc(I18n.t('wallet.failedNotice'))}</div>`;
       setTimeout(() => { notice.innerHTML = ''; }, 6000);
+    }
+
+    function updateChipLabels() {
+      document.querySelectorAll('.amount-btn').forEach(btn => {
+        const val = parseInt(btn.dataset.val);
+        btn.textContent = formatCurrency(val);
+      });
     }
 
     document.querySelectorAll('.amount-btn').forEach(btn => {
@@ -149,55 +165,55 @@
       });
     };
 
-    async function loadWallet() {
-      try {
-        const wallet = await API.get('/api/wallet');
-        document.getElementById('disp-balance').textContent = (wallet.balance || 0).toLocaleString() + ' VND';
-        document.getElementById('disp-available').textContent = (wallet.available_balance || 0).toLocaleString() + ' VND';
-        document.getElementById('disp-held').textContent = (wallet.held_deposit || 0).toLocaleString() + ' VND';
-
-        const txs = await API.get('/api/wallet/transactions');
-        renderTransactions(txs);
-      } catch (err) {
-        console.error(err);
-      }
+    function renderWallet(wallet) {
+      lastWalletData = wallet;
+      document.getElementById('disp-balance').textContent = formatCurrency(wallet.balance);
+      document.getElementById('disp-available').textContent = formatCurrency(wallet.available_balance);
+      document.getElementById('disp-held').textContent = formatCurrency(wallet.held_deposit);
+      updateChipLabels();
     }
 
     function renderTransactions(txs) {
+      lastTxData = txs;
       const container = document.getElementById('tx-history-container');
       if (!txs || !txs.length) {
-        container.innerHTML = '<p class="muted">No transactions recorded yet.</p>';
+        container.innerHTML = `<p class="muted">${Hub.esc(I18n.t('wallet.noTx'))}</p>`;
         return;
       }
+
+      const locale = I18n.lang === 'vi' ? 'vi-VN' : 'en-US';
 
       container.innerHTML = `
         <div style="overflow-x:auto;">
           <table>
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Transaction ID</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Status</th>
+                <th>${Hub.esc(I18n.t('wallet.colDate'))}</th>
+                <th>${Hub.esc(I18n.t('wallet.colTxId'))}</th>
+                <th>${Hub.esc(I18n.t('wallet.colType'))}</th>
+                <th>${Hub.esc(I18n.t('wallet.colAmount'))}</th>
+                <th>${Hub.esc(I18n.t('wallet.colStatus'))}</th>
               </tr>
             </thead>
             <tbody>
               ${txs.map(t => {
                 let badgeClass = '';
-                let typeLabel = t.type;
-                if (t.type === 'topup') { typeLabel = 'Top-up'; badgeClass = ''; }
-                else if (t.type === 'deposit') { typeLabel = 'Deposit Hold'; badgeClass = 'warn'; }
-                else if (t.type === 'trip_fee') { typeLabel = 'Trip Rental Fee'; badgeClass = 'secondary'; }
-                else if (t.status === 'refunded') { typeLabel = 'Deposit Refund'; badgeClass = ''; }
+                if (t.type === 'deposit') badgeClass = 'warn';
+                else if (t.type === 'trip_fee') badgeClass = 'secondary';
+                else if (t.status === 'failed') badgeClass = 'bad';
+
+                const typeKey = 'wallet.type.' + t.type;
+                const statusKey = 'wallet.status.' + t.status;
+                const typeLabel = I18n.t(typeKey) !== typeKey ? I18n.t(typeKey) : t.type;
+                const statusLabel = I18n.t(statusKey) !== statusKey ? I18n.t(statusKey) : t.status;
 
                 return `
                   <tr>
-                    <td>${new Date(t.timestamp).toLocaleString(I18n.lang)}</td>
+                    <td>${new Date(t.timestamp).toLocaleString(locale)}</td>
                     <td><code>${Hub.esc(t.transaction_id)}</code></td>
                     <td><b>${Hub.esc(typeLabel)}</b></td>
-                    <td style="font-weight:700;">${(t.amount || 0).toLocaleString()} VND</td>
-                    <td><span class="badge ${badgeClass}">${Hub.esc(t.status)}</span></td>
+                    <td style="font-weight:700;">${formatCurrency(t.amount)}</td>
+                    <td><span class="badge ${badgeClass}">${Hub.esc(statusLabel)}</span></td>
                   </tr>
                 `;
               }).join('')}
@@ -207,10 +223,22 @@
       `;
     }
 
+    async function loadWallet() {
+      try {
+        const wallet = await API.get('/api/wallet');
+        renderWallet(wallet);
+
+        const txs = await API.get('/api/wallet/transactions');
+        renderTransactions(txs);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     document.getElementById('btn-submit-topup').onclick = async () => {
       const amt = parseInt(document.getElementById('inp-custom-amount').value) || selectedAmount;
       if (amt < 10000) {
-        alert('Minimum top-up amount is 10,000 VND');
+        alert(I18n.t('wallet.minAmountAlert'));
         return;
       }
 
@@ -224,12 +252,13 @@
       }
     };
 
+    document.addEventListener('langchange', () => {
+      I18n.apply();
+      if (lastWalletData) renderWallet(lastWalletData);
+      if (lastTxData) renderTransactions(lastTxData);
+    });
+
     loadWallet();
-  </script>
-  <!-- Bổ sung thư viện Lucide để render icon -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script>
-    lucide.createIcons();
   </script>
 </body>
 </html>

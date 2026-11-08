@@ -13,6 +13,7 @@ const Hub = (() => {
     student: [
       ['find-hub.html', 'menu.findHub', 'map', 'tab.discover'], ['reserve-vehicle.html', 'menu.reserve', 'parking', 'tab.reserve'],
       ['my-trips.html', 'menu.trips', 'bike', 'tab.trips'], ['charging-request.html', 'menu.charging', 'zap', 'tab.charge'],
+      ['wallet.html', 'menu.wallet', 'wallet', 'tab.wallet'],
     ],
     operator: [
       ['dashboard.html', 'menu.dashboard', 'grid'], ['incidents.html', 'menu.incidents', 'bell'],
@@ -28,6 +29,7 @@ const Hub = (() => {
     shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/>',
     parking: '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>',
     plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"/>',
+    wallet: '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
     construction: '<path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/>',

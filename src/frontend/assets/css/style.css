@@ -181,7 +181,7 @@ body.shell-student nav .who span.name { display: none; }
 body.shell-student main { max-width: 520px; margin: 14px auto 0; padding: 0 20px; }
 body.shell-student h1 { font-size: clamp(26px, 7vw, 32px); letter-spacing: -.02em; line-height: 1.15; }
 body.shell-student .card { border-radius: 20px; }
-body.shell-student .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; z-index: 60; top: auto; bottom: 0; left: 50%; gap: 0; border-bottom: 0; transform: translateX(-50%); width: min(100%, 520px); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
+body.shell-student .tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; z-index: 60; top: auto; bottom: 0; left: 50%; gap: 0; border-bottom: 0; transform: translateX(-50%); width: min(100%, 520px); padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
 .tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; border-radius: 14px; color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; transition: color .15s; }
 .tabbar a svg.icon { width: 24px; height: 24px; }
 .tabbar a[aria-current="page"] { color: var(--brand-strong); font-weight: 800; }

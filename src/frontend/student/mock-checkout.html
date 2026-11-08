@@ -1,20 +1,20 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>Payment Gateway Checkout (Mock)</title>
+  <title data-i18n="checkout.title">Payment Gateway Checkout (Mock)</title>
   <script src="/shared/i18n.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
   <style>
     .checkout-wrap {
-      max-width: 460px;
+      max-width: 480px;
       margin: 32px auto;
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,0.1));
     }
     .checkout-banner {
       background: linear-gradient(135deg, #a51263, #d91b7e);
@@ -28,16 +28,17 @@
     .info-row {
       display: flex;
       justify-content: space-between;
-      padding: 10px 0;
+      align-items: center;
+      padding: 12px 0;
       border-bottom: 1px solid var(--line);
       font-size: 0.95rem;
     }
     .qr-payment-box {
-      width: 160px;
-      height: 160px;
+      width: 170px;
+      height: 170px;
       margin: 20px auto;
       border: 2px dashed #d91b7e;
-      border-radius: 8px;
+      border-radius: 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -46,81 +47,112 @@
       color: #111;
       font-family: monospace;
       text-align: center;
-      padding: 8px;
+      padding: 12px;
     }
     .btn-success {
       background: #10b981;
       color: white;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       font-size: 1rem;
       font-weight: 700;
       border-radius: 8px;
       border: none;
       cursor: pointer;
       margin-bottom: 10px;
+      transition: opacity 0.15s ease;
     }
     .btn-failed {
       background: #ef4444;
       color: white;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       font-size: 1rem;
       font-weight: 700;
       border-radius: 8px;
       border: none;
       cursor: pointer;
+      margin-bottom: 10px;
+      transition: opacity 0.15s ease;
     }
+    .btn-cancel {
+      background: var(--bg);
+      color: var(--ink);
+      width: 100%;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+    }
+    .btn-success:hover, .btn-failed:hover { opacity: 0.9; }
   </style>
 </head>
 <body data-role="student">
-  <div class="checkout-wrap">
-    <div class="checkout-banner">
-      <div style="font-size:1.8rem; font-weight:800; letter-spacing:1px;">MoMo / VNPay</div>
-      <div style="font-size:0.85rem; opacity:0.9;">Secure Payment Gateway Simulator</div>
+  <nav id="nav"></nav>
+  <main>
+    <div class="checkout-wrap">
+      <div class="checkout-banner">
+        <div style="font-size:1.8rem; font-weight:800; letter-spacing:1px;">MoMo / VNPay</div>
+        <div style="font-size:0.85rem; opacity:0.9;" data-i18n="checkout.bannerSub">Simulated MoMo / VNPay IPN Checkout</div>
+      </div>
+      <div class="checkout-body">
+        <div class="info-row">
+          <span class="muted" data-i18n="checkout.orderId">Order ID:</span>
+          <code id="txt-order-id">ORD-00000000</code>
+        </div>
+        <div class="info-row">
+          <span class="muted" data-i18n="checkout.student">Student Account:</span>
+          <span id="txt-user-id" style="font-weight:600;"></span>
+        </div>
+        <div class="info-row">
+          <span class="muted" data-i18n="checkout.amount">Amount to Pay:</span>
+          <b id="txt-amount" style="font-size:1.3rem; color:#d91b7e;">0 VND</b>
+        </div>
+
+        <div class="qr-payment-box">
+          <div style="font-size:1.1rem; font-weight:800; color:#a51263;">VIETQR / MOMO</div>
+          <div style="font-size:0.75rem; color:#555; margin-top:8px;" data-i18n="checkout.qrNote">MOCK QR CODE</div>
+        </div>
+
+        <p class="muted" style="font-size:0.85rem; text-align:center; margin-bottom:20px;" data-i18n="checkout.scanQr">
+          Scan QR with MoMo/VNPay app or choose test outcome below:
+        </p>
+
+        <button type="button" class="btn-success" id="btn-pay-success">
+          ✓ <span data-i18n="checkout.btnSuccess">Simulate Successful Payment</span>
+        </button>
+        <button type="button" class="btn-failed" id="btn-pay-fail">
+          ✕ <span data-i18n="checkout.btnFailed">Simulate Payment Failure</span>
+        </button>
+        <a href="/app/student/wallet.html" class="btn-cancel" data-i18n="checkout.btnCancel">Cancel and Return to Wallet</a>
+      </div>
     </div>
-    <div class="checkout-body">
-      <div class="info-row">
-        <span class="muted">Merchant:</span>
-        <b>Smart E-Mobility Hub</b>
-      </div>
-      <div class="info-row">
-        <span class="muted">Order ID:</span>
-        <code id="txt-order-id">ORD-00000000</code>
-      </div>
-      <div class="info-row">
-        <span class="muted">Total Amount:</span>
-        <b id="txt-amount" style="font-size:1.25rem; color:#d91b7e;">0 VND</b>
-      </div>
-
-      <div class="qr-payment-box">
-        <div style="font-size:1.1rem; font-weight:800; color:#a51263;">VIETQR / MOMO</div>
-        <div style="font-size:0.75rem; color:#555; margin-top:6px;">Scan with banking app</div>
-      </div>
-
-      <p class="muted" style="font-size:0.8rem; text-align:center; margin-bottom:20px;">
-        This simulated checkout tests the cryptographic HMAC signature and idempotent webhook callback of Step 3 in the group demo script.
-      </p>
-
-      <button type="button" class="btn-success" id="btn-pay-success">
-        ✓ Simulate Payment Success
-      </button>
-      <button type="button" class="btn-failed" id="btn-pay-fail">
-        ✕ Simulate Payment Decline / Cancel
-      </button>
-    </div>
-  </div>
+  </main>
 
   <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
   <script>
+    Hub.init();
+
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('order_id') || '';
     const amount = parseInt(urlParams.get('amount')) || 0;
     const userId = urlParams.get('user_id') || '';
     const signature = urlParams.get('signature') || '';
 
+    function formatAmount() {
+      const locale = I18n.lang === 'vi' ? 'vi-VN' : 'en-US';
+      document.getElementById('txt-amount').textContent = amount.toLocaleString(locale) + ' VND';
+    }
+
     document.getElementById('txt-order-id').textContent = orderId;
-    document.getElementById('txt-amount').textContent = amount.toLocaleString() + ' VND';
+    document.getElementById('txt-user-id').textContent = userId;
+    formatAmount();
 
     async function sendCallback(success) {
       try {
@@ -139,6 +171,11 @@
 
     document.getElementById('btn-pay-success').onclick = () => sendCallback(true);
     document.getElementById('btn-pay-fail').onclick = () => sendCallback(false);
+
+    document.addEventListener('langchange', () => {
+      I18n.apply();
+      formatAmount();
+    });
   </script>
 </body>
 </html>

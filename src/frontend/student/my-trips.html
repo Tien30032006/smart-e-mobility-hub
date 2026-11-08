@@ -143,7 +143,8 @@
           <span class="muted" data-i18n="trip.refundLabel">Deposit refunded</span>
           <b id="inv-refund" style="color:#10b981;">0 VND</b>
         </div>
-        <div style="margin-top:20px;">
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
+          <a href="/app/student/wallet.html" class="button secondary" style="width:100%; text-align:center; text-decoration:none;" data-i18n="trips.viewWallet">View Wallet & History</a>
           <button type="button" class="button" id="btn-close-invoice" style="width:100%;" data-i18n="trip.closeReceipt">Close Receipt</button>
         </div>
       </div>
@@ -394,10 +395,12 @@
         document.getElementById('return-modal').style.display = 'none';
 
         // Show Invoice modal
+        const minUnit = I18n.lang === 'vi' ? 'phút' : 'min';
+        const locale = I18n.lang === 'vi' ? 'vi-VN' : 'en-US';
         document.getElementById('inv-trip-id').textContent = receipt.trip_id;
-        document.getElementById('inv-duration').textContent = `${receipt.duration_minutes} min`;
-        document.getElementById('inv-fee').textContent = `${receipt.rental_fee.toLocaleString()} VND`;
-        document.getElementById('inv-refund').textContent = `${receipt.deposit_refunded.toLocaleString()} VND`;
+        document.getElementById('inv-duration').textContent = `${receipt.duration_minutes} ${minUnit}`;
+        document.getElementById('inv-fee').textContent = `${receipt.rental_fee.toLocaleString(locale)} VND`;
+        document.getElementById('inv-refund').textContent = `${receipt.deposit_refunded.toLocaleString(locale)} VND`;
         document.getElementById('invoice-modal').style.display = 'flex';
       } catch (err) {
         document.getElementById('return-modal-error').innerHTML = `<div class="error" role="alert">${Hub.esc(err.message)}</div>`;

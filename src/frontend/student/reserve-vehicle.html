@@ -179,6 +179,9 @@
           <div class="notice-box">
             <b data-i18n="reserve.depositNotice">Refundable Security Deposit: 50,000 VND (held for 15 minutes)</b><br>
             <span data-i18n="reserve.depositDesc">Deposit will be refunded upon return after rental fee deduction.</span>
+            <div style="margin-top:6px;">
+              <a href="/app/student/wallet.html" style="font-size:0.85rem; font-weight:600; color:var(--brand); text-decoration:underline;" data-i18n="reserve.topUpNow">Top Up Wallet</a>
+            </div>
           </div>
           <div style="margin-bottom: 16px; font-size:0.85rem; color:var(--muted);">
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
@@ -300,8 +303,10 @@
 
     function showError(msg) {
       const el = document.getElementById('error-container');
-      el.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;">${Hub.esc(msg)}</div>`;
-      setTimeout(() => { el.innerHTML = ''; }, 6000);
+      const isWalletIssue = msg && (msg.toLowerCase().includes('deposit') || msg.toLowerCase().includes('wallet') || msg.toLowerCase().includes('balance') || msg.toLowerCase().includes('cọc') || msg.toLowerCase().includes('tiền'));
+      const topUpBtn = isWalletIssue ? `<div style="margin-top:8px;"><a href="/app/student/wallet.html" class="button" style="text-decoration:none; display:inline-block; padding:6px 14px; font-size:0.85rem;">💳 ${Hub.esc(I18n.t('reserve.topUpNow'))}</a></div>` : '';
+      el.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;"><div>${Hub.esc(msg)}</div>${topUpBtn}</div>`;
+      setTimeout(() => { el.innerHTML = ''; }, 8000);
     }
 
     async function loadHubsAndState() {
