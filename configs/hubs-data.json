@@ -1,29 +1,524 @@
 {
   "hubs": [
-    { "id": "HUB-METRO", "name": "VNU-HCM Metro Station", "location": { "lat": 10.8790, "lng": 106.8060 },
-      "capacity": 12, "charging_points": 4, "charging_power_kw": 3.3 },
-    { "id": "HUB-KTX", "name": "Dormitory Zone A", "location": { "lat": 10.8800, "lng": 106.8050 },
-      "capacity": 20, "charging_points": 6, "charging_power_kw": 3.3 },
-    { "id": "HUB-CAMPUS", "name": "University Campus", "location": { "lat": 10.8820, "lng": 106.8010 },
-      "capacity": 16, "charging_points": 4, "charging_power_kw": 7.0 },
-    { "id": "HUB-LIB", "name": "Central Library", "location": { "lat": 10.8770, "lng": 106.8030 },
-      "capacity": 8, "charging_points": 2, "charging_power_kw": 3.3 }
+    {
+      "id": "HUB-METRO",
+      "name": "Metro Station - VNU-HCM",
+      "location": {
+        "lat": 10.8672,
+        "lng": 106.7955
+      },
+      "capacity": 12,
+      "charging_points": 4,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-KTX",
+      "name": "Dormitory Zone A (VNU-HCM)",
+      "location": {
+        "lat": 10.8826,
+        "lng": 106.781
+      },
+      "capacity": 20,
+      "charging_points": 6,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-CAMPUS",
+      "name": "HCMUT Campus 2",
+      "location": {
+        "lat": 10.8805,
+        "lng": 106.8058
+      },
+      "capacity": 16,
+      "charging_points": 4,
+      "charging_power_kw": 7.0
+    },
+    {
+      "id": "HUB-LIB",
+      "name": "VNU-HCM Central Library",
+      "location": {
+        "lat": 10.8755,
+        "lng": 106.8
+      },
+      "capacity": 8,
+      "charging_points": 2,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-KTXB",
+      "name": "Dormitory Zone B (VNU-HCM)",
+      "location": {
+        "lat": 10.8785,
+        "lng": 106.8072
+      },
+      "capacity": 16,
+      "charging_points": 4,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-BK1",
+      "name": "HCMUT Campus 1",
+      "location": {
+        "lat": 10.7731,
+        "lng": 106.6602
+      },
+      "capacity": 14,
+      "charging_points": 4,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-HOAHAO",
+      "name": "Hoa Hao Dormitory (HCMUT)",
+      "location": {
+        "lat": 10.7625,
+        "lng": 106.67
+      },
+      "capacity": 10,
+      "charging_points": 3,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-BENTHANH",
+      "name": "Metro Ben Thanh Station",
+      "location": {
+        "lat": 10.7725,
+        "lng": 106.6981
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-NHAHAT",
+      "name": "Metro Opera House Station",
+      "location": {
+        "lat": 10.7766,
+        "lng": 106.7031
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-BASON",
+      "name": "Metro Ba Son Station",
+      "location": {
+        "lat": 10.7864,
+        "lng": 106.7066
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-VANTHANH",
+      "name": "Metro Van Thanh Park Station",
+      "location": {
+        "lat": 10.796,
+        "lng": 106.7159
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-TANCANG",
+      "name": "Metro Tan Cang Station",
+      "location": {
+        "lat": 10.792,
+        "lng": 106.723
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-THAODIEN",
+      "name": "Metro Thao Dien Station",
+      "location": {
+        "lat": 10.8016,
+        "lng": 106.7332
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-ANPHU",
+      "name": "Metro An Phu Station",
+      "location": {
+        "lat": 10.8038,
+        "lng": 106.745
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-RACHCHIEC",
+      "name": "Metro Rach Chiec Station",
+      "location": {
+        "lat": 10.808,
+        "lng": 106.757
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-PHUOCLONG",
+      "name": "Metro Phuoc Long Station",
+      "location": {
+        "lat": 10.817,
+        "lng": 106.764
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-BINHTHAI",
+      "name": "Metro Binh Thai Station",
+      "location": {
+        "lat": 10.826,
+        "lng": 106.772
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-THUDUC",
+      "name": "Metro Thu Duc Station",
+      "location": {
+        "lat": 10.8466,
+        "lng": 106.7745
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-KCNC",
+      "name": "Metro Hi-Tech Park Station",
+      "location": {
+        "lat": 10.8537,
+        "lng": 106.786
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    },
+    {
+      "id": "HUB-MT-SUOITIEN",
+      "name": "Metro Suoi Tien Terminal Station",
+      "location": {
+        "lat": 10.864,
+        "lng": 106.804
+      },
+      "capacity": 6,
+      "charging_points": 1,
+      "charging_power_kw": 3.3
+    }
   ],
   "vehicles": [
-    { "id": "V-001", "model": "VinFast Evo", "type": "e-motorcycle", "battery": 85, "status": "available", "hub_id": "HUB-METRO" },
-    { "id": "V-002", "model": "Dat Bike", "type": "e-motorcycle", "battery": 40, "status": "available", "hub_id": "HUB-METRO" },
-    { "id": "V-003", "model": "Giant E-bike", "type": "e-bike", "battery": 60, "status": "available", "hub_id": "HUB-METRO" },
-    { "id": "V-004", "model": "Giant E-bike", "type": "e-bike", "battery": 30, "status": "charging", "hub_id": "HUB-KTX" },
-    { "id": "V-005", "model": "VinFast Evo", "type": "e-motorcycle", "battery": 90, "status": "available", "hub_id": "HUB-KTX" },
-    { "id": "V-006", "model": "Xiaomi Scooter", "type": "e-scooter", "battery": 75, "status": "available", "hub_id": "HUB-KTX" },
-    { "id": "V-007", "model": "Giant E-bike", "type": "e-bike", "battery": 15, "status": "available", "hub_id": "HUB-CAMPUS" },
-    { "id": "V-008", "model": "Xiaomi Scooter", "type": "e-scooter", "battery": 95, "status": "available", "hub_id": "HUB-CAMPUS" },
-    { "id": "V-009", "model": "Dat Bike", "type": "e-motorcycle", "battery": 55, "status": "maintenance", "hub_id": "HUB-LIB" },
-    { "id": "PV-001", "model": "Private e-bike", "type": "e-bike", "battery": 20, "status": "available", "hub_id": "HUB-KTX", "owner_id": "U-S02" }
+    {
+      "id": "V-001",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 85,
+      "status": "available",
+      "hub_id": "HUB-METRO"
+    },
+    {
+      "id": "V-002",
+      "model": "Dat Bike",
+      "type": "e-motorcycle",
+      "battery": 40,
+      "status": "available",
+      "hub_id": "HUB-METRO"
+    },
+    {
+      "id": "V-003",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 60,
+      "status": "available",
+      "hub_id": "HUB-METRO"
+    },
+    {
+      "id": "V-004",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 30,
+      "status": "charging",
+      "hub_id": "HUB-KTX"
+    },
+    {
+      "id": "V-005",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 90,
+      "status": "available",
+      "hub_id": "HUB-KTX"
+    },
+    {
+      "id": "V-006",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 75,
+      "status": "available",
+      "hub_id": "HUB-KTX"
+    },
+    {
+      "id": "V-007",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 15,
+      "status": "available",
+      "hub_id": "HUB-CAMPUS"
+    },
+    {
+      "id": "V-008",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 95,
+      "status": "available",
+      "hub_id": "HUB-CAMPUS"
+    },
+    {
+      "id": "V-009",
+      "model": "Dat Bike",
+      "type": "e-motorcycle",
+      "battery": 55,
+      "status": "maintenance",
+      "hub_id": "HUB-LIB"
+    },
+    {
+      "id": "PV-001",
+      "model": "Private e-bike",
+      "type": "e-bike",
+      "battery": 20,
+      "status": "available",
+      "hub_id": "HUB-KTX",
+      "owner_id": "U-S02"
+    },
+    {
+      "id": "V-010",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-KTXB"
+    },
+    {
+      "id": "V-011",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-KTXB"
+    },
+    {
+      "id": "V-012",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 55,
+      "status": "available",
+      "hub_id": "HUB-KTXB"
+    },
+    {
+      "id": "V-013",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-BK1"
+    },
+    {
+      "id": "V-014",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-BK1"
+    },
+    {
+      "id": "V-015",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 55,
+      "status": "available",
+      "hub_id": "HUB-BK1"
+    },
+    {
+      "id": "V-016",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-HOAHAO"
+    },
+    {
+      "id": "V-017",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-HOAHAO"
+    },
+    {
+      "id": "V-018",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 70,
+      "status": "available",
+      "hub_id": "HUB-MT-BENTHANH"
+    },
+    {
+      "id": "V-019",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 60,
+      "status": "available",
+      "hub_id": "HUB-MT-BENTHANH"
+    },
+    {
+      "id": "V-020",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-MT-NHAHAT"
+    },
+    {
+      "id": "V-021",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 70,
+      "status": "available",
+      "hub_id": "HUB-MT-BASON"
+    },
+    {
+      "id": "V-022",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-MT-VANTHANH"
+    },
+    {
+      "id": "V-023",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-MT-TANCANG"
+    },
+    {
+      "id": "V-024",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 70,
+      "status": "available",
+      "hub_id": "HUB-MT-THAODIEN"
+    },
+    {
+      "id": "V-025",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-MT-ANPHU"
+    },
+    {
+      "id": "V-026",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-MT-RACHCHIEC"
+    },
+    {
+      "id": "V-027",
+      "model": "Giant E-bike",
+      "type": "e-bike",
+      "battery": 70,
+      "status": "available",
+      "hub_id": "HUB-MT-PHUOCLONG"
+    },
+    {
+      "id": "V-028",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-MT-BINHTHAI"
+    },
+    {
+      "id": "V-029",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-MT-THUDUC"
+    },
+    {
+      "id": "V-030",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 75,
+      "status": "available",
+      "hub_id": "HUB-MT-THUDUC"
+    },
+    {
+      "id": "V-031",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 80,
+      "status": "available",
+      "hub_id": "HUB-MT-KCNC"
+    },
+    {
+      "id": "V-032",
+      "model": "VinFast Evo",
+      "type": "e-motorcycle",
+      "battery": 65,
+      "status": "available",
+      "hub_id": "HUB-MT-SUOITIEN"
+    },
+    {
+      "id": "V-033",
+      "model": "Xiaomi Scooter",
+      "type": "e-scooter",
+      "battery": 75,
+      "status": "available",
+      "hub_id": "HUB-MT-SUOITIEN"
+    }
   ],
   "users": [
-    { "id": "U-S01", "role": "student", "full_name": "Nguyen Van An", "email": "an@hcmut.edu.vn", "student_code": "2310001", "has_private_ev": false },
-    { "id": "U-S02", "role": "student", "full_name": "Tran Thi Binh", "email": "binh@hcmut.edu.vn", "student_code": "2310002", "has_private_ev": true },
-    { "id": "U-OP1", "role": "operator", "full_name": "Operator Demo", "email": "operator@hub.vn", "operator_id": "OP-001" }
+    {
+      "id": "U-S01",
+      "role": "student",
+      "full_name": "Nguyen Van An",
+      "email": "an@hcmut.edu.vn",
+      "student_code": "2310001",
+      "has_private_ev": false
+    },
+    {
+      "id": "U-S02",
+      "role": "student",
+      "full_name": "Tran Thi Binh",
+      "email": "binh@hcmut.edu.vn",
+      "student_code": "2310002",
+      "has_private_ev": true
+    },
+    {
+      "id": "U-OP1",
+      "role": "operator",
+      "full_name": "Operator Demo",
+      "email": "operator@hub.vn",
+      "operator_id": "OP-001"
+    }
   ]
 }

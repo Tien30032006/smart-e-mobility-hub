@@ -96,3 +96,14 @@ Hubs are deliberately small (Metro 12 spaces, Library 8 spaces…) so that full 
 * The UI is bilingual (EN / VI). All visible text goes through `src/shared/i18n.js` (`data-i18n` / `Hub.t`); add new keys to both languages.
 * Use the CSS tokens and components in `assets/css/style.css`; no raw colors, no emoji icons; support light + dark mode.
 * Details and checklist: [`docs/ui-guidelines.md`](ui-guidelines.md).
+
+## U1 - Hub distance (Member 1)
+
+`GET /api/reservation/hubs/nearby?lat=<float>&lng=<float>&limit=<int, optional>`
+Same objects as `/api/hubs` plus `distance_m` (great-circle, metres) and `walk_min`, nearest first.
+The browser (`shared/map.js`: `rankHubs`, `routeTo`) computes the same Haversine value locally and replaces it
+with the real walking distance from the routing service once a hub is selected.
+
+Hub ids: campus/dorm hubs `HUB-KTX` (Zone A), `HUB-KTXB` (Zone B), `HUB-CAMPUS` (HCMUT campus 2), `HUB-BK1` (campus 1),
+`HUB-HOAHAO`, `HUB-LIB`; Metro Line 1 stations `HUB-METRO` (ĐHQG) and `HUB-MT-*` (13 others). Coordinates live only in
+`configs/hubs-data.json` and are approximate - verify on Google Maps before the demo.

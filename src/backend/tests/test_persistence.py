@@ -39,8 +39,8 @@ def test_seed_save_and_restore_roundtrip(db_path):
     seed_network(net)
     p.flush()
     counts = p.table_counts()
-    assert counts["hubs"] == 4 and counts["vehicles"] == 10 and counts["users"] == 3
-    assert counts["parking_spaces"] == 12 + 20 + 16 + 8 and counts["charging_points"] == 16
+    assert counts["hubs"] == 20 and counts["vehicles"] == 34 and counts["users"] == 3
+    assert counts["parking_spaces"] == 174 and counts["charging_points"] == 40
     p.close()
 
     net2, p2 = fresh_world(db_path)                     # "restart"

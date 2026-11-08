@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="personal.title">Cá nhân</title>
+  <script src="/shared/i18n.js"></script>
+  <link rel="stylesheet" href="/app/assets/css/style.css">
+  <link rel="stylesheet" href="personal.css">
+</head>
+<body data-role="student">
+  <nav id="nav"></nav>
+  <main>
+    <header class="page-head">
+      <h1 data-i18n="personal.title"></h1>
+      <p class="muted" data-i18n="personal.subtitle"></p>
+    </header>
+
+    <section class="personal-identity card" aria-labelledby="personal-name">
+      <div class="personal-avatar" id="avatar" aria-hidden="true"></div>
+      <div class="personal-identity-copy">
+        <h2 id="personal-name"></h2>
+        <p id="personal-email" class="muted"></p>
+      </div>
+      <span class="personal-student-code" id="identity-code"></span>
+    </section>
+
+    <section class="personal-wallet card" aria-labelledby="wallet-heading">
+      <div class="personal-wallet-copy">
+        <span class="muted" data-i18n="wallet.available"></span>
+        <h2 id="wallet-heading" data-i18n="personal.walletTitle"></h2>
+        <strong id="wallet-balance" class="personal-balance">—</strong>
+      </div>
+      <a class="button personal-wallet-action" href="wallet.html" data-i18n="personal.walletAction"></a>
+    </section>
+
+    <section class="personal-section" aria-labelledby="personal-tools-title">
+      <h2 id="personal-tools-title" data-i18n="personal.toolsTitle"></h2>
+      <div class="personal-shortcuts">
+        <a class="card personal-shortcut" href="charging-vehicles.html">
+          <span class="personal-shortcut-icon" id="vehicle-icon" aria-hidden="true"></span>
+          <span><b data-i18n="personal.vehiclesTitle"></b><small data-i18n="personal.vehiclesDesc"></small></span>
+          <span class="personal-arrow" aria-hidden="true">›</span>
+        </a>
+        <a class="card personal-shortcut" href="charging-request.html">
+          <span class="personal-shortcut-icon" aria-hidden="true">⚡</span>
+          <span><b data-i18n="personal.chargingTitle"></b><small data-i18n="personal.chargingDesc"></small></span>
+          <span class="personal-arrow" aria-hidden="true">›</span>
+        </a>
+        <a class="card personal-shortcut" href="my-trips.html">
+          <span class="personal-shortcut-icon" aria-hidden="true">↗</span>
+          <span><b data-i18n="personal.tripsTitle"></b><small data-i18n="personal.tripsDesc"></small></span>
+          <span class="personal-arrow" aria-hidden="true">›</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="personal-section card personal-ev" aria-labelledby="personal-ev-heading">
+      <div class="pagebar"><h2 id="personal-ev-heading" data-i18n="personal.evHeading"></h2><a class="secondary" href="charging-vehicles.html" data-i18n="personal.manageVehicles"></a></div>
+      <div id="personal-vehicles" class="personal-vehicle-list" aria-live="polite"></div>
+    </section>
+
+    <section class="personal-section card personal-profile" aria-labelledby="profile-heading">
+      <div class="pagebar"><div><h2 id="profile-heading" data-i18n="personal.profileTitle"></h2><p class="muted" data-i18n="personal.profileHint"></p></div></div>
+      <form id="profile-form">
+        <div class="personal-fields">
+          <label for="profile-name"><span data-i18n="auth.fullName"></span><input id="profile-name" name="full_name" maxlength="80" required></label>
+          <label for="profile-code"><span data-i18n="auth.studentCode"></span><input id="profile-code" name="student_code" maxlength="12" autocomplete="off"></label>
+          <label for="profile-phone"><span data-i18n="auth.phone"></span><input id="profile-phone" name="phone" type="tel" autocomplete="tel"></label>
+          <label for="profile-email"><span data-i18n="auth.email"></span><input id="profile-email" name="email" type="email" disabled></label>
+        </div>
+        <div class="personal-save-row"><span id="profile-message" class="muted" role="status" aria-live="polite"></span><button type="submit" data-i18n="common.save"></button></div>
+      </form>
+    </section>
+  </main>
+
+  <script src="/shared/api-client.js"></script>
+  <script src="/app/assets/js/main.js"></script>
+  <script>
+    Hub.init();
+    const $ = id => document.getElementById(id);
+    $('vehicle-icon').innerHTML = Hub.icon('bike');
+    const escapeHtml = value => Hub.esc(value || '');
+    const money = amount => new Intl.NumberFormat(I18n.lang, { maximumFractionDigits: 0 }).format(Number(amount || 0)) + ' VND';
+
+    async function loadPersonal() {
+      const [profile, wallet, vehicles] = await Promise.all([API.get('/api/me'), API.get('/api/wallet'), API.get('/api/me/vehicles')]);
+      const initials = profile.full_name.trim().split(/\s+/).slice(-2).map(part => part[0]).join('').toLocaleUpperCase();
+      $('avatar').textContent = initials;
+      $('personal-name').textContent = profile.full_name;
+      $('personal-email').textContent = profile.email;
+      $('identity-code').textContent = profile.student_code || profile.user_id;
+      $('profile-name').value = profile.full_name || '';
+      $('profile-code').value = profile.student_code || '';
+      $('profile-phone').value = profile.phone || '';
+      $('profile-email').value = profile.email || '';
+      $('wallet-balance').textContent = money(wallet.available_balance);
+      $('personal-vehicles').innerHTML = vehicles.length ? vehicles.map(vehicle => `
+        <article class="personal-vehicle">
+          <div><b>${escapeHtml(vehicle.model)}</b><span>${escapeHtml(Hub.t('charging.' + vehicle.vehicle_type))}</span></div>
+          <strong>${escapeHtml(Hub.t('personal.battery', { n: vehicle.battery_level }))}</strong>
+          <small>${escapeHtml(I18n.hubName({ hub_id: vehicle.hub_id }))}</small>
+        </article>`).join('') : `<p class="muted personal-empty">${escapeHtml(Hub.t('personal.evEmpty'))}</p>`;
+    }
+
+    $('profile-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const message = $('profile-message');
+      const patch = { full_name: $('profile-name').value.trim(), phone: $('profile-phone').value.trim() };
+      const code = $('profile-code').value.trim();
+      if (code) patch.student_code = code;
+      try {
+        const profile = await API.patch('/api/me', patch);
+        await API.refreshProfile();
+        $('personal-name').textContent = profile.full_name;
+        $('identity-code').textContent = profile.student_code || profile.user_id;
+        message.textContent = Hub.t('personal.saved');
+      } catch (error) {
+        message.textContent = Hub.t('personal.saveFailed');
+      }
+    });
+
+    document.addEventListener('langchange', () => {
+      if ($('wallet-balance').textContent !== '—') loadPersonal().catch(() => {});
+    });
+    loadPersonal().catch(() => { $('profile-message').textContent = Hub.t('personal.loadFailed'); });
+  </script>
+</body>
+</html>

@@ -1,23 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title data-i18n="ops.title">Network monitoring</title>
   <script src="/shared/i18n.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/shared/map.js"></script>
   <link rel="stylesheet" href="/app/assets/css/style.css">
-  <style>
-    .pin.offline .dot { background: #8a8f98 !important; box-shadow: none !important; }
-    .pin.offline .tag { opacity: .85; }
-    .badge.off { background: var(--line); color: var(--muted); }
-    .banner-off { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--line); color: var(--ink); font-weight: 600; }
-    .mini-list { display: grid; gap: 6px; margin-top: 8px; }
-    .mini-list .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
-    .alert-row { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
-  </style>
 </head>
 <body data-role="operator">
-  <!-- OWNER: Member 3 (UC01 Dashboard Monitoring). Data: GET /api/operator/dashboard + GET /api/operator/hubs/{id} -->
   <nav id="nav"></nav>
   <main>
     <header class="page-head pagebar">
@@ -25,83 +18,100 @@
       <button type="button" class="secondary" id="refresh"></button>
     </header>
     <div id="app"></div>
+    <section class="card ops-section"><div class="pagebar"><h2 data-i18n="ops.alertsTitle"></h2><span id="alert-count" class="badge"></span></div><div id="alerts"></div></section>
+    <section class="card ops-section"><div class="pagebar"><h2 data-i18n="ops.proposalsTitle"></h2><button id="propose" type="button" data-i18n="ops.proposalsLoad"></button></div><div id="proposals" class="muted"></div></section>
+    <section class="card ops-section"><h2 data-i18n="ops.ordersTitle"></h2><div id="orders"></div></section>
   </main>
   <script src="/shared/api-client.js"></script>
-  <script src="/shared/stream.js"></script>
   <script src="/app/assets/js/main.js"></script>
   <script>
-    Hub.init(); Hub.liveBadge();
-    let data = null, sel = null, stamp = new Date(), detail = null, detailFor = null;
+    Hub.init();
+    let hubs = [], alerts = [], orders = [], proposals = null, sel = null, stamp = new Date(), showAllAttention = false, showAllHubs = false;
+    let networkMap = null, mapLayer = null, mapDidFit = false, openSelectedHub = false;
     const E = Hub.esc, T = (k, v) => E(Hub.t(k, v));
-    const hubs = () => (data ? data.hubs : []);
-    const status = h => h.tone === 'offline' ? ['off', 'op.offline'] : h.tone === 'busy' ? ['bad', 'ops.statusBusy'] : h.tone === 'low' ? ['warn', 'ops.statusLow'] : ['', 'ops.statusOk'];
-    const SEV = { critical: 'bad', warning: 'warn', info: 'info' };
-    const BAND = { low: 'bad', medium: 'warn', high: '' };
-
-    function detailHtml(cur) {
-      if (!detail || detailFor !== cur.hub_id) return `<p class="muted">${T('common.loading')}</p>`;
-      const d = detail;
-      return `<h3 style="margin:20px 0 8px;font-size:16px">${T('op.vehiclesHere')}</h3>` + (d.vehicles.length ?
-        `<div class="tablewrap"><table><thead><tr><th>${T('op.col.id')}</th><th>${T('op.col.battery')}</th><th>${T('op.col.state')}</th></tr></thead><tbody>` +
-        d.vehicles.map(v => `<tr><td>${E(v.vehicle_id)}</td><td><span class="badge ${BAND[v.battery_band]}">${v.battery_level}% · ${T('op.battery.' + v.battery_band)}</span></td><td>${T('op.vs.' + v.status)}</td></tr>`).join('') + '</tbody></table></div>'
-        : `<p class="muted">${T('op.noVehicles')}</p>`) +
-        `<h3 style="margin:20px 0 8px;font-size:16px">${T('op.portsHere')}</h3><div class="mini-list">` +
-        d.charging_points.map(p => `<div class="row"><span>${E(p.point_id)}${p.vehicle_id ? ' · ' + E(p.vehicle_id) : ''}</span><span class="badge ${p.status === 'out_of_service' ? 'bad' : p.status === 'available' ? '' : 'warn'}">${T('charging.status.' + p.status)}</span></div>`).join('') + '</div>';
-    }
+    const status = h => h.free_spaces === 0 || h.near_capacity ? ['bad', 'ops.statusBusy'] : h.vehicles_available <= 2 ? ['warn', 'ops.statusLow'] : ['', 'ops.statusOk'];
 
     function draw() {
-      if (!data) return;
+      const persistentMap = document.getElementById('network-map');
       document.getElementById('sub').textContent = Hub.t('ops.sub') + ' · ' + Hub.t('ops.updated', { t: stamp.toLocaleTimeString(I18n.lang) });
-      const hs = hubs(), t = data.totals;
-      const k = [['ops.kpiVehicles', t.vehicles_available], ['ops.kpiCharging', hs.reduce((a, h) => a + h.charging_points_in_use, 0)],
-                 ['ops.kpiSpaces', t.free_spaces], ['ops.kpiHubs', hs.length - t.hubs_offline],
-                 ['op.kpiAlerts', t.alerts_open], ['op.kpiIncidents', t.incidents_open], ['op.kpiOrders', t.orders_active]];
-      const cur = hs.find(h => h.hub_id === sel) || hs[0];
-      const att = hs.filter(h => status(h)[0]);
+      const sum = f => hubs.reduce((a, h) => a + f(h), 0);
+      const k = [['ops.kpiVehicles', sum(h => h.vehicles_available)], ['ops.kpiCharging', sum(h => h.charging_points_total - h.charging_points_free)],
+                 ['ops.kpiSpaces', sum(h => h.free_spaces)], ['ops.kpiHubs', hubs.length]];
+      const cur = hubs.find(h => h.hub_id === sel) || hubs[0];
+      const att = hubs.filter(h => status(h)[0]);
       document.getElementById('app').innerHTML =
         `<section class="kpis">${k.map(([l, n]) => `<article class="card kpi"><div class="n" data-n="${n}">0</div><div class="l">${T(l)}</div></article>`).join('')}</section>
         <div class="console">
           <section class="card"><h2 style="margin:0">${T('ops.map')}</h2><p class="muted" style="margin:2px 0 14px">${T('ops.mapHint')}</p>
-            ${Hub.mapHtml(hs, h => E(h.tone === 'offline' ? Hub.t('op.offline') : Hub.t('hub.vehShort', { n: h.vehicles_available }) + ' · ' + Hub.t('hub.spacesShort', { n: h.free_spaces })), cur && cur.hub_id)}
-            <div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span><span class="badge off">${T('op.offline')}</span></div></section>
-          <aside class="card detail">${cur ? (() => { const p = Math.round(cur.occupancy_rate * 100), [tn, sk] = status(cur); return `
+            <div id="network-map-slot"></div>
+            <div class="legend"><span class="badge">${T('hub.stockHigh')}</span><span class="badge warn">${T('hub.stockLow')}</span><span class="badge bad">${T('hub.stockFull')}</span></div></section>
+          <aside class="card detail">${cur ? (() => { const p = Math.round(cur.utilization * 100), [tn, sk] = status(cur); return `
             <div class="pagebar"><h2 style="margin:0">${E(I18n.hubName(cur))}</h2><span class="badge ${tn}">${T(sk)}</span></div>
-            ${cur.tone === 'offline' ? `<p class="banner-off" role="status">${T('op.offlineMsg', { name: I18n.hubName(cur) })}<br><span class="muted">${T('op.stale')}</span></p>` : ''}
             <div class="big"><div><div class="n">${cur.vehicles_available}</div><span class="muted">${T('ops.col.vehicles')}</span></div>
               <div><div class="n">${cur.free_spaces}</div><span class="muted">${T('ops.kpiSpaces')}</span></div></div>
-            <div class="bar ${cur.near_capacity ? 'hot' : ''}" role="progressbar" aria-label="${T('op.occupancy')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><i style="width:${p}%"></i></div>
-            <p class="muted" style="margin:8px 0 0">${T('op.occupancy')}: ${p}% · ${T('hub.freePorts', { n: cur.charging_points_free })}</p>
-            ${detailHtml(cur)}
+            <div class="bar ${cur.near_capacity ? 'hot' : ''}" role="progressbar" aria-label="${T('hub.utilization')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><i style="width:${p}%"></i></div>
+            <p class="muted" style="margin:8px 0 0">${p}${T('hub.full')} · ${T('hub.freePorts', { n: cur.charging_points_free })}</p>
             <h3 style="margin:20px 0 8px;font-size:16px">${T('ops.attention')}</h3>
-            ${att.length ? att.map(h => `<p style="margin:6px 0;display:flex;justify-content:space-between;gap:8px">${E(I18n.hubName(h))}<span class="badge ${status(h)[0]}">${T(status(h)[1])}</span></p>`).join('') : `<p class="muted">${T('ops.allGood')}</p>`}`; })() : ''}</aside>
+            ${att.length ? (showAllAttention ? att : att.slice(0, 4)).map(h => `<p style="margin:6px 0;display:flex;justify-content:space-between;gap:8px">${E(I18n.hubName(h))}<span class="badge ${status(h)[0]}">${T(status(h)[1])}</span></p>`).join('') + (att.length > 4 ? `<button type="button" class="secondary attention-toggle" data-attention-toggle aria-expanded="${showAllAttention}">${showAllAttention ? T('ops.lessAttention') : T('ops.moreAttention', {n:att.length - 4})}</button>` : '') : `<p class="muted">${T('ops.allGood')}</p>`}`; })() : ''}</aside>
         </div>
-        <h2>${T('op.alertsPanel')}</h2>
-        <section class="card">${data.alerts.length ? data.alerts.map(a => `<div class="alert-row"><span><span class="badge ${SEV[a.severity] || ''}">${T('al.severity.' + a.severity)}</span> ${E(a.message)}</span></div>`).join('') : `<p class="muted">${T('op.noAlerts')}</p>`}
-          <p style="margin:12px 0 0"><a href="/app/operator/alerts.html">${T('op.viewAll')}</a></p></section>
-        <h2>${T('ops.table')}</h2>
+        <div class="pagebar hub-table-heading"><h2>${T('ops.table')}</h2>${hubs.length > 6 ? `<button type="button" class="secondary" data-hub-toggle aria-expanded="${showAllHubs}">${T(showAllHubs ? 'ops.hubsLess' : 'ops.hubsMore', {n: hubs.length})}</button>` : ''}</div>
         <div class="tablewrap"><table><thead><tr><th>${T('ops.col.hub')}</th><th>${T('ops.col.vehicles')}</th><th>${T('ops.col.parking')}</th><th>${T('ops.col.ports')}</th><th>${T('ops.col.status')}</th></tr></thead><tbody>
-          ${hs.map(h => { const p = Math.round(h.occupancy_rate * 100), [tn, sk] = status(h);
+          ${(showAllHubs ? hubs : hubs.slice(0, 6)).map(h => { const p = Math.round(h.utilization * 100), [tn, sk] = status(h);
             return `<tr data-hub="${E(h.hub_id)}" class="${cur && cur.hub_id === h.hub_id ? 'sel' : ''}"><td><b>${E(I18n.hubName(h))}</b></td><td>${h.vehicles_available}</td>
               <td>${h.capacity - h.free_spaces} / ${h.capacity} · ${p}%<span class="mini"><i style="width:${p}%"></i></span></td>
-              <td>${h.charging_points_in_use} / ${h.charging_points_total}</td><td><span class="badge ${tn}">${T(sk)}</span></td></tr>`; }).join('')}
+              <td>${h.charging_points_total - h.charging_points_free} / ${h.charging_points_total}</td><td><span class="badge ${tn}">${T(sk)}</span></td></tr>`; }).join('')}
         </tbody></table></div>`;
       const root = document.getElementById('app');
-      root.querySelectorAll('.kpi .n').forEach(n => Hub.countUp(n, +n.dataset.n));
-      hs.forEach(h => { if (h.tone === 'offline') { const pin = root.querySelector(`.pin[data-hub="${CSS.escape(h.hub_id)}"]`); if (pin) pin.classList.add('offline'); } });
-      root.querySelectorAll('.pin, tbody tr[data-hub]').forEach(e => e.onclick = () => { sel = e.dataset.hub; draw(); loadDetail(); });
+      const mapSlot = root.querySelector('#network-map-slot');
+      const mapElement = persistentMap || document.createElement('div');
+      mapElement.id = 'network-map';
+      mapElement.className = 'operator-map';
+      mapElement.setAttribute('role', 'application');
+      mapElement.setAttribute('aria-label', Hub.t('ops.map'));
+      mapSlot.replaceWith(mapElement);
+      if (!networkMap && typeof L !== 'undefined') {
+        networkMap = HubMap.initMap(mapElement, { center: [10.82, 106.78], zoom: 11, scrollWheelZoom: false });
+        if (networkMap) mapLayer = HubMap.hubLayer(networkMap, hub => { sel = hub.hub_id; openSelectedHub = true; draw(); });
+      }
+      if (networkMap && mapLayer) {
+        mapLayer.update(hubs);
+        mapLayer.select(cur && cur.hub_id, openSelectedHub);
+        openSelectedHub = false;
+        if (!mapDidFit && hubs.length) { mapLayer.fit(); mapDidFit = true; }
+        requestAnimationFrame(() => networkMap.invalidateSize());
+      } else {
+        mapElement.innerHTML = `<div class="map-fallback">${E(Hub.t('student.geo.noLeaflet'))}</div>`;
+      }
+      root.querySelectorAll('.kpi .n').forEach(n => { n.textContent = new Intl.NumberFormat(I18n.lang).format(+n.dataset.n); });
+      root.querySelector('[data-hub-toggle]')?.addEventListener('click', () => { showAllHubs = !showAllHubs; draw(); });
+      root.querySelector('[data-attention-toggle]')?.addEventListener('click', () => { showAllAttention = !showAllAttention; draw(); });
+      root.querySelectorAll('tbody tr').forEach(e => e.onclick = () => { sel = e.dataset.hub; openSelectedHub = true; draw(); const h = hubs.find(x => x.hub_id === sel); if (h && networkMap) HubMap.flyTo(networkMap, h.location.lat, h.location.lng, 14); });
       document.getElementById('refresh').innerHTML = Hub.icon('refresh') + T('ops.refresh');
+      document.getElementById('alert-count').textContent = Hub.t('ops.alertsOpen', {n: alerts.filter(a => a.status === 'OPEN').length});
+      document.getElementById('alerts').innerHTML = alerts.length ? alerts.map(a => {
+        const hub = hubs.find(h => h.hub_id === a.target_id);
+        const message = Hub.t('ops.alert.' + a.kind, {name: hub ? I18n.hubName(hub) : a.target_id, id: a.target_id});
+        const statusText = a.status === 'OPEN' ? Hub.t('incident.open') : a.status === 'HANDLED' ? Hub.t('ops.alertHandled') : a.status;
+        return `<article class="ops-row"><span><b>${E(message)}</b><br><small>${E(new Date(a.created_at).toLocaleString(I18n.lang))}</small></span>${a.status === 'OPEN' ? `<button class="secondary" data-ack="${E(a.alert_id)}">${T('ops.alertAck')}</button>` : `<span class="badge">${E(statusText)}</span>`}</article>`;
+      }).join('') : `<p class="muted">${E(Hub.t('ops.alertsEmpty'))}</p>`;
+      document.querySelectorAll('[data-ack]').forEach(b => b.onclick = async () => { await API.post('/api/operator/alerts/' + encodeURIComponent(b.dataset.ack) + '/acknowledge'); await load(); });
+      document.getElementById('orders').innerHTML = orders.length ? orders.map(o => `<article class="ops-row"><span>${E(o.from_hub)} → ${E(o.to_hub)} · ${o.vehicle_ids.length} · ${E(o.status)}</span>${o.status === 'PENDING' ? `<button data-complete="${E(o.order_id)}">${T('ops.orderComplete')}</button>` : ''}</article>`).join('') : `<p class="muted">${E(Hub.t('ops.noOrders'))}</p>`;
+      document.querySelectorAll('[data-complete]').forEach(b => b.onclick = async () => { b.disabled = true; try { await API.post('/api/operator/redistribution/orders/' + encodeURIComponent(b.dataset.complete) + '/complete'); await load(); } catch(e) { b.disabled = false; alert(e.message); } });
+      const proposalBox = document.getElementById('proposals');
+      if (proposals === null) proposalBox.textContent = Hub.t('ops.proposalsEmpty');
+      else proposalBox.innerHTML = proposals.length ? proposals.map((p, i) => `<article class="ops-row"><span>${E(Hub.t('ops.proposalRoute',{from:p.from_hub,to:p.to_hub,n:p.vehicle_ids.length}))}</span><button data-create-order="${i}">${T('ops.proposalApply')}</button></article>`).join('') : `<p class="muted">${E(Hub.t('ops.proposalsEmpty'))}</p>`;
+      proposalBox.querySelectorAll('[data-create-order]').forEach(b => b.onclick = async () => { b.disabled = true; try { await API.post('/api/operator/redistribution/orders', proposals[Number(b.dataset.createOrder)]); proposals = null; await load(); } catch(e) { b.disabled = false; alert(e.message); } });
     }
-    async function loadDetail() {
-      const id = (hubs().find(h => h.hub_id === sel) || hubs()[0] || {}).hub_id;
-      if (!id) return;
-      if (detailFor !== id) { detail = null; detailFor = id; draw(); }
-      try { const d = await API.get('/api/operator/hubs/' + encodeURIComponent(id)); if (detailFor === id) { detail = d; draw(); } } catch (e) {}
-    }
-    async function load() { data = await API.get('/api/operator/dashboard'); stamp = new Date(); draw(); loadDetail(); }
+    async function load() { const data = await API.get('/api/operator/dashboard'); hubs = data.hubs || []; alerts = (data.alerts || []).filter(a => a.status !== 'RESOLVED'); orders = await API.get('/api/operator/redistribution/orders'); stamp = new Date(); draw(); }
+    document.getElementById('propose').onclick = async () => {
+      const box = document.getElementById('proposals'); box.textContent = Hub.t('ops.proposalsLoading');
+      try { proposals = await API.get('/api/operator/redistribution/proposals'); draw(); }
+      catch(e) { box.textContent = e.message; }
+    };
     document.getElementById('refresh').onclick = () => load().catch(() => {});
-    document.addEventListener('langchange', () => data && draw());
-    Hub.render(document.getElementById('app'), API.get('/api/operator/dashboard'), d => { data = d; stamp = new Date(); draw(); loadDetail(); });
-    ['hub_updated', 'vehicle_updated', 'alert_created'].forEach(n => Stream.on(n, () => load().catch(() => {})));   // falls back to polling by itself
+    document.addEventListener('langchange', () => hubs.length && draw());
+    load().catch(e => { document.getElementById('app').textContent = e.message; });
+    setInterval(() => load().catch(() => {}), 30000);   // mockup: refresh every 30 s
   </script>
 </body>
 </html>

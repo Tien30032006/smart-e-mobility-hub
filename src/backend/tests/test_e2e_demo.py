@@ -89,7 +89,7 @@ def test_student_pipeline_changes_wallet_and_is_saved_to_sqlite(client, sqlite_o
     row = persistence._conn.execute("SELECT hub_id,status FROM vehicles WHERE vehicle_id=?", (vid,)).fetchone()
     assert row["hub_id"] == "HUB-KTX"
     info = client.get("/api/demo/database", headers=operator).json()
-    assert info["enabled"] and info["tables"]["vehicles"] == 10
+    assert info["enabled"] and info["tables"]["vehicles"] == 34
 
 
 def test_restart_restores_wallet_and_trips(client, sqlite_on, tmp_path):
@@ -139,11 +139,11 @@ def test_demo_reset_restores_seed_data_and_wallets(client, sqlite_on):
     network.vehicles["V-005"].battery_level = 1
     assert client.post("/api/demo/reset", headers=student).status_code == 403
     r = client.post("/api/demo/reset", headers=operator)
-    assert r.status_code == 200 and r.json()["vehicles"] == 10
+    assert r.status_code == 200 and r.json()["vehicles"] == 34
     assert network.vehicles["V-005"].battery_level == 90 and not network.reservations
     assert client.get("/api/wallet", headers=student).json()["held_deposit"] == 0
     assert persistence.table_counts()["reservations"] == 0
-    assert persistence.table_counts()["vehicles"] == 10
+    assert persistence.table_counts()["vehicles"] == 34
 
 
 def test_operator_demo_switches_over_http(client):

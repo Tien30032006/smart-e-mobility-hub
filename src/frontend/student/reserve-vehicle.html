@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
@@ -148,10 +148,6 @@
     <header class="page-head">
       <h1 data-i18n="page.reserve.title">Reserve Vehicle / Parking</h1>
       <p class="muted" data-i18n="page.reserve.desc"></p>
-      <div class="chips">
-        <span class="chip"><span><span data-i18n="common.owner"></span>: Member 1</span></span>
-        <span class="chip"><span><span data-i18n="common.useCases"></span>: U2, U3, U4, U5</span></span>
-      </div>
     </header>
 
     <div id="error-container"></div>
@@ -160,8 +156,8 @@
       <!-- Left Column: Booking Form -->
       <div class="form-panel">
         <div class="tab-nav">
-          <button type="button" class="tab-btn active" id="tab-btn-veh" data-i18n="reserve.tabVehicle">Shared Vehicle (U2)</button>
-          <button type="button" class="tab-btn" id="tab-btn-park" data-i18n="reserve.tabParking">Parking / Return Dock (U3)</button>
+          <button type="button" class="tab-btn active" id="tab-btn-veh" data-i18n="reserve.tabVehicle">Xe dùng chung</button>
+          <button type="button" class="tab-btn" id="tab-btn-park" data-i18n="reserve.tabParking">Chỗ đỗ / Điểm trả xe</button>
         </div>
 
         <!-- Form U2: Reserve Vehicle -->
@@ -185,7 +181,7 @@
           </div>
           <div style="margin-bottom: 16px; font-size:0.85rem; color:var(--muted);">
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-              <input type="checkbox" id="chk-fail-pay"> <span>[Demo Exception Flow] Simulate Payment Failure (U8)</span>
+              <input type="checkbox" id="chk-fail-pay"> <span>Mô phỏng thanh toán thất bại</span>
             </label>
           </div>
           <button id="btn-submit-vehicle" class="button" style="width:100%;">
@@ -245,7 +241,7 @@
         </div>
         <div style="margin-bottom:16px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--muted);">
-            <input type="checkbox" id="chk-fail-lock"> <span>[Demo Exception Flow] Simulate Smart Lock Jam (U9)</span>
+            <input type="checkbox" id="chk-fail-lock"> <span>Mô phỏng khóa thông minh bị kẹt</span>
           </label>
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end;">

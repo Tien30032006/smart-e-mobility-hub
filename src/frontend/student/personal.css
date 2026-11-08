@@ -1,0 +1,53 @@
+.personal-identity,
+.personal-wallet,
+.personal-profile { padding: 20px; }
+.personal-ev { padding: 20px; }
+.personal-ev .pagebar { gap: 12px; align-items: center; margin-bottom: 12px; }
+.personal-ev .pagebar h2 { margin: 0; font-size: 18px; }
+.personal-ev .pagebar a { flex: none; padding: 8px 12px; border-radius: 999px; text-decoration: none; font-size: 12px; }
+.personal-vehicle-list { display: grid; gap: 8px; }
+.personal-vehicle { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); }
+.personal-vehicle > div { display: grid; }
+.personal-vehicle > div span,
+.personal-vehicle small { color: var(--muted); font-size: 12px; }
+.personal-vehicle strong { color: var(--brand-strong); font-size: 13px; }
+.personal-vehicle small { grid-column: 1 / -1; }
+.personal-empty { margin: 0; padding: 8px 0; }
+.personal-identity { display: flex; align-items: center; gap: 14px; }
+.personal-avatar { display: grid; place-items: center; flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-strong); font-size: 17px; font-weight: 800; }
+.personal-identity-copy { min-width: 0; flex: 1; }
+.personal-identity h2 { margin: 0; font-size: 18px; }
+.personal-identity p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.personal-student-code { color: var(--muted); font-size: 12px; }
+.personal-wallet { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 14px; background: var(--mint); }
+.personal-wallet-copy { display: grid; gap: 2px; }
+.personal-wallet-copy h2 { margin: 0; font-size: 15px; }
+.personal-balance { color: var(--brand-strong); font-size: clamp(22px, 6vw, 30px); font-variant-numeric: tabular-nums; }
+.personal-wallet-action { flex: none; text-align: center; text-decoration: none; }
+.personal-section { margin-top: 24px; }
+.personal-section > h2,
+.personal-profile h2 { margin: 0 0 10px; font-size: 19px; }
+.personal-shortcuts { display: grid; gap: 10px; }
+.personal-shortcut { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 14px 16px; color: var(--ink); text-decoration: none; }
+.personal-shortcut:hover { border-color: var(--brand); box-shadow: var(--shadow); }
+.personal-shortcut > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.personal-shortcut b { font-size: 14px; }
+.personal-shortcut small { color: var(--muted); font-size: 12px; }
+.personal-shortcut-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-strong); font-size: 20px; }
+.personal-shortcut-icon svg { width: 22px; height: 22px; }
+.personal-arrow { color: var(--muted); font-size: 24px; line-height: 1; }
+.personal-profile { padding: 20px; }
+.personal-profile .pagebar { align-items: flex-start; }
+.personal-profile .pagebar p { margin: 0; }
+.personal-fields { display: grid; gap: 12px; }
+.personal-fields label { display: grid; gap: 5px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.personal-fields input { width: 100%; min-height: 44px; }
+.personal-fields input:disabled { opacity: .72; }
+.personal-save-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.personal-save-row button { min-width: 112px; }
+@media (min-width: 700px) {
+  .personal-shortcuts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .personal-shortcut { align-items: flex-start; flex-direction: column; }
+  .personal-arrow { display: none; }
+  .personal-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
