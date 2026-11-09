@@ -42,11 +42,11 @@ flowchart TD
   Student[Student<br/>pages] --> API[FastAPI<br/>application]
   Operator[Operator<br/>pages] --> API
   API --> Modules[Reservation<br/>Charging<br/>Operations<br/>Simulation]
-  Modules --> Core[Shared core<br/>HubNetworkManager]
-  Modules <--> Bus[Event bus<br/>Server-Sent Events]
+  Modules --> Core[Shared core<br/>Hub manager]
+  Modules <--> Bus[Event bus<br/>SSE stream]
   Core --> SQLite[(SQLite<br/>persistence)]
   Core --> Simulator[Demo<br/>simulator]
-  Modules --> Snapshot[Read-only network<br/>snapshot]
+  Modules --> Snapshot[Network<br/>snapshot]
 ```
 
 The frontend is served by FastAPI under `/app/`; shared browser libraries are served under `/shared/`. Backend modules use the shared network state and event bus. SQLite persists application state between restarts, while the simulator generates demo telemetry.
