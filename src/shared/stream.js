@@ -11,7 +11,7 @@
  * - Bursts are coalesced: a handler runs at most once per Stream.throttleMs per event name.
  */
 const Stream = (() => {
-  const NAMES = ['hub_updated', 'vehicle_updated', 'alert_created', 'reservation_changed', 'payment_updated'];
+  const NAMES = ['hub_updated', 'vehicle_updated', 'alert_created', 'reservation_changed', 'payment_updated', 'system_reset'];
   const handlers = {}, statusFns = [], lastRun = {}, pending = {};
   let es = null, status = 'idle', retry = 0, pollTimer = null, reconnectTimer = null;
   const api = { pollMs: 10000, throttleMs: 300 };

@@ -1,7 +1,7 @@
 # Database (SQLite) – owner: TV5
 
 `network` (in-memory) stays the single source of truth, so every module keeps using plain Python objects and
-`with network.lock:`. `core/database.py` **mirrors** that state into a SQLite file (`DATABASE_PATH`, default `data/hub.db`).
+`with network.lock:`. `src/backend/core/database.py` **mirrors** that state into a SQLite file (`DATABASE_PATH`, default `data/hub.db`).
 
 ```
 request ──> module code ──> network (memory) ──┐
@@ -30,14 +30,20 @@ Keep your data in a module-level `dict` of JSON-serialisable values (ISO strings
 ```python
 persistence.register_store("operations.alerts", lambda: alerts._store)   # TV3 example
 ```
-It is then saved on every flush, restored at startup and wiped by `POST /api/demo/reset` once you add your
-`reset` helper to `core/demo.py::reset_module_state`. (Done already: wallet, ledger, trips, issues, locks.
-**TODO for owners:** TV3 alerts / incidents / relocation orders, TV2 notifications / audit / override log, TV4 results.)
+Registered stores are saved on every flush and restored at startup. The current registrations are in
+`src/backend/core/demo.py::register_persisted_stores`: wallet balances/orders/ledger, trips, issues, lock states,
+and Operations alerts, incidents, tickets, relocation orders and charging overrides. Charging sessions are stored
+with the shared network state. Simulation results are currently in memory in `modules/simulation/routes.py` and are
+not restored after a server restart. `POST /api/demo/reset` clears module state and reloads the seed data.
 
 ## Handy commands
 ```bash
-python scripts/seed_data.py --reset-db     # delete the file, next start re-seeds
+python scripts/seed_data.py --reset-db     # deletes the configured SQLite file; next start re-seeds
 sqlite3 data/hub.db "select vehicle_id,status,battery_level,hub_id from vehicles"
-curl -H "Authorization: Bearer <operator jwt>" localhost:8000/api/demo/database   # row counts + recent events
+curl -H "Authorization: Bearer <operator jwt>" http://localhost:8000/api/demo/database   # row counts + recent events
 ```
+
+On Windows, `scripts/seed_data.py --reset-db` can also be run from PowerShell. Stop the backend first. This deletes
+the SQLite file; use the Operator dashboard's **Reset demo** action instead when you want to reset data without
+removing the database file.
 Tests use `DATABASE_PATH=:memory:` (persistence off) except `test_persistence.py` / `test_e2e_demo.py`, which use temp files.

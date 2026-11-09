@@ -2,15 +2,13 @@
 
 * Your spec document: **Charging__Scheduling.docx**
 * Code folder: `src/backend/modules/charging/`
-* UI pages: `student/charging-request.html`, `charging-vehicles.html`, `charging-schedule.html`, `charging-status.html` and (shared with Member 3) `operator/charging.html`
+* UI pages: `src/frontend/student/charging-request.html`, `src/frontend/student/charging-vehicles.html`, `src/frontend/student/charging-schedule.html`, `src/frontend/student/charging-status.html` and (shared with Member 3) `src/frontend/operator/charging.html`
 * Your tests: `src/backend/tests/test_charging.py` (remove `@SKIP` as each use case is finished)
-* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `src/backend/core/entities.py`, `src/backend/core/state_manager.py`
 
-The Member 2 code stubs have been implemented. The code/test checklist below is updated;
-personal diagrams, reports and group deliverables remain tracked separately. Verification:
-`python -m pytest -q` reports **26 passed, 24 skipped** (16 selected TV2 cases; extended 75-case regression suite runs separately) (the remaining skips belong to other modules).
+The charging module implementation and main UI flows are present. This checklist tracks the member's planned features and course deliverables; run `python -m pytest -q` to see the current test status instead of relying on a fixed count here.
 
-Implementation notes, API workflow, SOLID rationale and demo assumptions: [charging-implementation.md](../charging-implementation.md).
+Implementation: [charging backend](../../src/backend/modules/charging/) and [charging request page](../../src/frontend/student/charging-request.html).
 
 ## A. Code (work in order P0 → P1 → P2)
 
@@ -101,4 +99,4 @@ Implementation notes, API workflow, SOLID rationale and demo assumptions: [charg
 - [x] SSE consumer with polling fallback; shared SSE server and Google/JWT remain TV5 tasks.
 - [x] Four test categories, 16 cases; Word Test Plan plus 16 testcase tables.
 
-Integration contracts and limitations: [charging-tv2-integration.md](../charging-tv2-integration.md).
+Integration references: [shared module contract](../shared-contract.md) and [charging API routes](../../src/backend/modules/charging/routes.py).

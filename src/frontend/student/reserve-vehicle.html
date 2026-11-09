@@ -75,6 +75,8 @@
       font-size: 0.9rem;
       line-height: 1.4;
     }
+    .reserve-topup-link { display: inline-flex; align-items: center; margin-top: 10px; padding: 7px 11px; border: 1px solid rgba(4, 120, 87, .3); border-radius: 8px; background: var(--surface); color: var(--brand-strong); font-size: .82rem; font-weight: 700; text-decoration: none; }
+    .reserve-topup-link:hover { background: var(--brand-soft); text-decoration: none; }
     [data-theme="dark"] .notice-box {
       background: #78350f33;
       color: #fde68a;
@@ -138,7 +140,27 @@
       padding: 24px;
       max-width: 440px;
       width: 100%;
+      min-width: 0;
       box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    #modal-qr-code { width: min(100%, 220px); aspect-ratio: 1; height: auto; margin: 16px auto; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; display: grid; place-items: center; }
+    #modal-qr-code img, #modal-qr-code canvas { display: block; width: 100% !important; height: auto !important; image-rendering: pixelated; }
+    .qr-modal-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    .qr-modal-actions .button { min-width: 0; white-space: normal; }
+    @media (max-width: 600px) {
+      body.shell-student main { padding-left: 14px; padding-right: 14px; }
+      .reserve-grid { gap: 14px; }
+      .form-panel, .pass-card { padding: 16px; }
+      .tab-nav { gap: 6px; margin-bottom: 18px; padding-bottom: 10px; }
+      .tab-btn { flex: 1; min-width: 0; padding: 9px 8px; font-size: .82rem; line-height: 1.35; }
+      .form-row select, .form-row input { min-width: 0; width: 100%; font-size: .9rem; }
+      .notice-box { padding: 12px; font-size: .84rem; }
+      #btn-submit-vehicle, #btn-submit-parking { min-height: 48px; padding: 10px 12px; font-size: .9rem; line-height: 1.35; white-space: normal; }
+      .dialog-backdrop { align-items: center; padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); overflow-y: auto; }
+      .dialog-box { width: min(100%, 440px); max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; padding: 18px; border-radius: 20px; }
+      #modal-qr-code { width: min(58vw, 220px); margin: 12px auto; }
+      .qr-modal-actions { grid-template-columns: 1fr; }
+      .qr-modal-actions .button { width: 100%; min-height: 46px; }
     }
   </style>
 </head>
@@ -176,7 +198,7 @@
             <b data-i18n="reserve.depositNotice">Refundable Security Deposit: 50,000 VND (held for 15 minutes)</b><br>
             <span data-i18n="reserve.depositDesc">Deposit will be refunded upon return after rental fee deduction.</span>
             <div style="margin-top:6px;">
-              <a href="/app/student/wallet.html" style="font-size:0.85rem; font-weight:600; color:var(--brand); text-decoration:underline;" data-i18n="reserve.topUpNow">Top Up Wallet</a>
+              <a href="/app/student/wallet.html" class="reserve-topup-link" data-i18n="reserve.topUpNow">Add funds to wallet</a>
             </div>
           </div>
           <div style="margin-bottom: 16px; font-size:0.85rem; color:var(--muted);">
@@ -220,7 +242,7 @@
       <div>
         <div id="pass-container">
           <div class="card" style="text-align:center; padding:32px 16px;">
-            <p class="muted" style="margin:0;">No active reservation pass.</p>
+            <p class="muted" style="margin:0;" data-i18n="trip.noReservationPass">No active reservation pass.</p>
           </div>
         </div>
       </div>
@@ -230,23 +252,20 @@
     <div id="qr-modal" class="dialog-backdrop" style="display:none;">
       <div class="dialog-box">
         <h3 style="margin-top:0;" data-i18n="reserve.pickupBtn">Scan QR to Unlock</h3>
-        <p class="muted" style="font-size:0.85rem;">Simulate camera scanner facing vehicle smart frame / dock.</p>
-        <div class="qr-box" style="width:180px; height:180px;">
-          <div style="font-weight:700; font-size:1.1rem; margin-bottom:4px;" id="modal-qr-text">QR-CODE</div>
-          <div style="font-size:0.75rem; color:#666;">Smart E-Mobility IoT</div>
-        </div>
+        <p class="muted" style="font-size:0.9rem; line-height:1.5;" data-i18n="reserve.qrModalHint">Mã QR demo của xe hoặc dock trả xe.</p>
+        <div id="modal-qr-code" role="img" aria-label="Demo vehicle unlock QR code"></div>
         <div class="form-row">
-          <label>Scanned QR Code payload:</label>
+          <label data-i18n="reserve.qrPayloadLabel">Mã QR được nhận diện</label>
           <input type="text" id="modal-qr-input">
         </div>
         <div style="margin-bottom:16px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--muted);">
-            <input type="checkbox" id="chk-fail-lock"> <span>Mô phỏng khóa thông minh bị kẹt</span>
+            <input type="checkbox" id="chk-fail-lock"> <span data-i18n="reserve.simulateLockFailure">Mô phỏng khóa thông minh bị kẹt</span>
           </label>
         </div>
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <div class="qr-modal-actions">
           <button type="button" class="button secondary" id="btn-close-qr" data-i18n="common.skip">Cancel</button>
-          <button type="button" class="button" id="btn-confirm-unlock">Unlock Vehicle</button>
+          <button type="button" class="button" id="btn-confirm-unlock" data-i18n="reserve.unlockVehicle">Mở khóa xe</button>
         </div>
       </div>
     </div>
@@ -300,7 +319,7 @@
     function showError(msg) {
       const el = document.getElementById('error-container');
       const isWalletIssue = msg && (msg.toLowerCase().includes('deposit') || msg.toLowerCase().includes('wallet') || msg.toLowerCase().includes('balance') || msg.toLowerCase().includes('cọc') || msg.toLowerCase().includes('tiền'));
-      const topUpBtn = isWalletIssue ? `<div style="margin-top:8px;"><a href="/app/student/wallet.html" class="button" style="text-decoration:none; display:inline-block; padding:6px 14px; font-size:0.85rem;">💳 ${Hub.esc(I18n.t('reserve.topUpNow'))}</a></div>` : '';
+      const topUpBtn = isWalletIssue ? `<div><a href="/app/student/wallet.html" class="reserve-topup-link">${Hub.esc(Hub.t('reserve.topUpNow'))}</a></div>` : '';
       el.innerHTML = `<div class="error" role="alert" style="margin-bottom:16px;"><div>${Hub.esc(msg)}</div>${topUpBtn}</div>`;
       setTimeout(() => { el.innerHTML = ''; }, 8000);
     }
@@ -368,7 +387,7 @@
       if (timerInterval) clearInterval(timerInterval);
 
       if (!res) {
-        container.innerHTML = `<div class="card" style="text-align:center; padding:32px 16px;"><p class="muted" style="margin:0;">No active reservation pass.</p></div>`;
+        container.innerHTML = `<div class="card" style="text-align:center; padding:32px 16px;"><p class="muted" style="margin:0;">${Hub.esc(Hub.t('trip.noReservationPass'))}</p></div>`;
         return;
       }
 
@@ -448,8 +467,11 @@
       const openUnlockBtn = document.getElementById('btn-open-unlock');
       if (openUnlockBtn) {
         openUnlockBtn.onclick = () => {
-          document.getElementById('modal-qr-text').textContent = 'QR-' + res.resource_id;
-          document.getElementById('modal-qr-input').value = 'QR-' + res.resource_id;
+          const qrPayload = 'QR-' + res.resource_id;
+          document.getElementById('modal-qr-input').value = qrPayload;
+          const qrTarget = document.getElementById('modal-qr-code');
+          qrTarget.replaceChildren();
+          if (typeof QRCode !== 'undefined') new QRCode(qrTarget, { text: qrPayload, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
           document.getElementById('qr-modal').style.display = 'flex';
         };
       }

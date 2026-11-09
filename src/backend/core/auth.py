@@ -205,7 +205,10 @@ def verify_google_token(id_token_str: str) -> dict:
     except ImportError:
         raise HTTPException(status_code=503, detail="Install google-auth to enable Google sign-in") from None
     try:
-        claims = id_token.verify_oauth2_token(id_token_str, g_requests.Request(), settings.google_client_id)
+        claims = id_token.verify_oauth2_token(
+            id_token_str, g_requests.Request(), settings.google_client_id,
+            clock_skew_in_seconds=5,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {exc}") from None
     except g_exc.TransportError:   # the server cannot download Google's public keys (offline)

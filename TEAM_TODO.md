@@ -12,21 +12,21 @@ Read this file first, then open **your personal TODO file** in `docs/todo/`.
 
 > This package ships with four use-case specification sets, so the four modules are assigned to Members 1–4. Member 5 owns the shared parts, architecture and integration, in the "Architecture & Integration Lead" role described in the main README. If your team splits the work differently, update this table and `docs/todo/member5.md`.
 
-## 1. Shared parts already built (owned by Member 5; anyone who wants to change them must notify the whole team first)
+## 1. Shared parts and integration points (owned by Member 5; coordinate changes to shared signatures with the team)
 
 | Component | File | Notes |
 |---|---|---|
-| `User` (abstract), `Student`, `Operator` classes | `core/entities.py` | Match the class diagram; `Student.find_vehicle/reserve_resource` and `Operator.handle_incident` delegate to each member's module |
-| `MobilityHub`, `ParkingSpace`, `ChargingPoint`, `EVehicle`, `Reservation`, `ChargingSession`, `Event` | `core/entities.py` | Simple methods are implemented; business methods are `todo(...)` stubs that name their owner |
-| Status enums + event types | `core/enums.py` | **Always use the enums, never raw strings** |
-| `HubNetworkManager` (`network`) | `core/state_manager.py` | Single source of truth for state, `network.lock`, atomic `move_vehicle()`, `snapshot()` (deep copy for What-if) |
-| `EventBus` (`bus`) | `core/event_bus.py` | Modules communicate through events (`bus.emit`, `bus.subscribe`) |
-| Mock authentication + role checks | `core/auth.py` | `require_student`, `require_operator` |
-| `AllocationService` | `core/allocation_service.py` | Delegation only: `allocate_vehicle/parking` → Member 1, `schedule_charging` → Member 2 |
-| Demo data | `configs/hubs-data.json`, `data/seed_data.py` | 4 Hubs, 10 vehicles (1 private), 3 accounts |
-| App + shared API | `app.py` | `/api/auth/login`, `/api/hubs`, `/api/network/status`; Swagger at `/docs` |
-| Shared frontend | `index.html`, `assets/`, `shared/api-client.js`, `shared/i18n.js` | Login, menu, EN/VI switcher, dark mode, design system, and the 501 "not implemented – owner" display |
-| Tests for shared parts | `tests/test_core.py` | Must always stay green |
+| `User` (abstract), `Student`, `Operator` classes | `src/backend/core/entities.py` | Match the class diagram; student/operator methods delegate to member modules |
+| `MobilityHub`, `ParkingSpace`, `ChargingPoint`, `EVehicle`, `Reservation`, `ChargingSession`, `Event` | `src/backend/core/entities.py` | Domain entities and state; module business flows live under `src/backend/modules/` |
+| Status enums + event types | `src/backend/core/enums.py` | **Always use the enums, never raw strings** |
+| `HubNetworkManager` (`network`) | `src/backend/core/state_manager.py` | Single source of truth for state, `network.lock`, atomic `move_vehicle()`, `snapshot()` (deep copy for What-if) |
+| `EventBus` (`bus`) | `src/backend/core/event_bus.py` | Modules communicate through events (`bus.emit`, `bus.subscribe`) |
+| Authentication + role checks | `src/backend/core/auth.py` | Google ID token, password/demo login, JWT session and `require_student` / `require_operator` |
+| `AllocationService` | `src/backend/core/allocation_service.py` | Shared resource-allocation helpers used by reservation and charging flows |
+| Demo data | `configs/hubs-data.json`, `src/backend/data/seed_data.py` | Seed data for the demo network |
+| App + shared API | `src/backend/app.py`, `src/backend/core/api_shared.py` | Auth/profile, demo reset, simulator, SSE, Hub and network endpoints; Swagger at `/docs` |
+| Shared frontend | `src/frontend/`, `src/shared/` | Login, onboarding, student/operator pages, EN/VI switcher, dark mode and shared design system |
+| Tests for shared parts | `src/backend/tests/test_core.py` | Shared-core regression coverage |
 
 Detailed contract (function names, event payloads, relocation-plan format…): [docs/shared-contract.md](docs/shared-contract.md).
 

@@ -60,6 +60,7 @@ def reset_demo(seed: int | None = None) -> dict:
         persistence.wipe()
         persistence.flush()
     stream_hub.publish("hub_updated", {"hub_id": None, "reason": "demo_reset"})
+    stream_hub.publish("system_reset", {"message": "Demo data has been reset"})
     log.info("demo data reset")
     return {"reset": True, "hubs": len(network.hubs), "vehicles": len(network.vehicles),
             "users": len(network.users), "seed": simulator.seed}

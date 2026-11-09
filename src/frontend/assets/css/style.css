@@ -227,6 +227,7 @@ body.shell-operator main { max-width: 1280px; margin: 28px auto 56px; padding: 0
 .tablewrap th { text-transform: none; letter-spacing: 0; font-size: 13px; }
 td .mini { display: block; height: 6px; width: 90px; margin-top: 6px; background: var(--line); border-radius: 99px; overflow: hidden; } td .mini i { display: block; height: 100%; background: var(--brand); }
 .pagebar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.page-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .ops-section { margin-top: 16px; }
 .ops-section h2 { margin: 0; font-size: 18px; }
 .ops-section .pagebar { align-items: center; margin-bottom: 12px; }

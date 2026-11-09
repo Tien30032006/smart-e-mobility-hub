@@ -76,9 +76,24 @@ const HubMap = (() => {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
     });
 
-    if (options.onTileError) {
-      tileLayer.on('tileerror', options.onTileError);
-    }
+    // Some mobile networks or embedded browsers cannot reach the OSM tile host.
+    // Keep markers and map interactions, but switch the basemap after repeated
+    // failures so users still get geographic context.
+    let tileErrors = 0;
+    let fallbackActive = false;
+    const fallbackLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · <a href="https://www.openstreetmap.fr/" target="_blank" rel="noopener">OSM France</a>',
+    });
+    tileLayer.on('tileerror', () => {
+      if (fallbackActive) return;
+      if (++tileErrors < 3) return;
+      fallbackActive = true;
+      map.removeLayer(tileLayer);
+      if (options.onTileError) fallbackLayer.on('tileerror', options.onTileError);
+      fallbackLayer.addTo(map);
+    });
 
     tileLayer.addTo(map);
     return map;

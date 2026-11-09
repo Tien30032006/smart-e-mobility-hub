@@ -185,18 +185,22 @@
       const el = $('app');
       el.innerHTML = `<div class="section-title"><h2>${Hub.esc(T('page.findHub.near'))}</h2></div>` +
         (rows.length ? visibleRows.map(r => { const h = r.hub, tn = Hub.tone(h), available = inventory[h.hub_id] || 0;
-          return `<div class="card hubrow ${tn}" data-hub="${Hub.esc(h.hub_id)}" tabindex="0" role="button" ${selected === h.hub_id ? 'aria-current="true"' : ''}>
+          const bookingMode = mode === 'personal' ? 'private' : 'shared_return';
+          const bookingTab = mode === 'personal' ? 'parking' : 'vehicle';
+          const bookingUrl = `/app/student/reserve-vehicle.html?hub_id=${encodeURIComponent(h.hub_id)}&tab=${bookingTab}&mode=${bookingMode}`;
+          return `<div class="card hubrow ${tn}" data-hub="${Hub.esc(h.hub_id)}" data-booking-url="${bookingUrl}" tabindex="0" role="link" aria-label="${Hub.esc(T('menu.reserve'))}: ${Hub.esc(I18n.hubName(h))}" ${selected === h.hub_id ? 'aria-current="true"' : ''}>
             <span class="pinico">${Hub.icon('pin')}</span>
             <span class="grow"><span class="kind">${Hub.esc(T('student.geo.kind.' + HubMap.hubKind(h)))}</span><b>${Hub.esc(I18n.hubName(h))}</b>
               <span class="meta">${Hub.esc(stat(h))} · ${Math.round(h.utilization * 100)}${Hub.esc(T('hub.full'))}</span><br>
               <span class="${mode === 'shared' ? (available === 0 ? 'muted' : 'ok') : (h.free_spaces === 0 ? 'muted' : 'ok')}">${Hub.esc(mode === 'shared' ? (available ? T('hub.ready', { n: available }) : T('hub.noVehiclesMatch')) : T('hub.freeSpaces', { n: h.free_spaces }))}</span><br>
-              ${(mode === 'shared' ? available > 0 : h.free_spaces > 0) ? `<a class="go" href="/app/student/reserve-vehicle.html?hub=${encodeURIComponent(h.hub_id)}${mode === 'personal' ? '&mode=private' : ''}">${Hub.esc(mode === 'personal' ? T('reserve.modePrivate') : T('menu.reserve'))} →</a>` : ''}</span>
+              ${(mode === 'shared' ? available > 0 : h.free_spaces > 0) ? `<a class="go button" href="${bookingUrl}">${Hub.esc(mode === 'personal' ? T('reserve.modePrivate') : T('menu.reserve'))} →</a>` : ''}</span>
             ${r.distance_m != null ? `<span class="dist">${Hub.esc(distLabel(r))}<small class="route-times" aria-label="${Hub.esc(T('student.geo.routeTimes', { walk: r.walk_min, electric: electricMinutes(r.distance_m) }))}"><span>${Hub.esc(T(r.real ? 'student.geo.walk' : 'student.geo.walkApprox', { n: r.walk_min }))}</span><span class="route-electric">${Hub.icon('zap')}${Hub.esc(T('student.geo.electric', { n: electricMinutes(r.distance_m) }))}</span></small></span>` : ''}
           </div>`; }).join('') + (rows.length > visibleRows.length ? `<button type="button" class="secondary hub-list-toggle" data-show-all-hubs aria-expanded="false">${Hub.esc(T('student.geo.showAllHubs', { n: rows.length }))}</button>` : showAllHubs && rows.length > 3 ? `<button type="button" class="secondary hub-list-toggle" data-show-all-hubs aria-expanded="true">${Hub.esc(T('student.geo.showFewerHubs'))}</button>` : '') : `<p class="muted">${Hub.esc(T('page.findHub.empty'))}</p>`);
       el.querySelector('[data-show-all-hubs]')?.addEventListener('click', () => { showAllHubs = !showAllHubs; draw(); });
       el.querySelectorAll('.hubrow').forEach(row => {
-        const pick = e => { if (e.target.closest('a.go')) return; selectHub(row.dataset.hub, true); };
-        row.onclick = pick; row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); } };
+        const openBooking = e => { if (e.target.closest('a.go')) return; window.location.href = row.dataset.bookingUrl; };
+        row.onclick = openBooking;
+        row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBooking(e); } };
       });
     }
 

@@ -15,7 +15,7 @@
   <main>
     <header class="page-head pagebar">
       <div><h1 data-i18n="ops.title"></h1><p class="muted" id="sub"></p></div>
-      <button type="button" class="secondary" id="refresh"></button>
+      <div class="page-actions"><button type="button" class="secondary" id="reset-demo" data-i18n="ops.resetDemo"></button><button type="button" class="secondary" id="refresh"></button></div>
     </header>
     <div id="app"></div>
     <section class="card ops-section"><div class="pagebar"><h2 data-i18n="ops.alertsTitle"></h2><span id="alert-count" class="badge"></span></div><div id="alerts"></div></section>
@@ -109,6 +109,18 @@
       catch(e) { box.textContent = e.message; }
     };
     document.getElementById('refresh').onclick = () => load().catch(() => {});
+    document.getElementById('reset-demo').onclick = async event => {
+      const button = event.currentTarget;
+      if (!await Hub.confirmDialog(Hub.t('ops.resetDemo'), Hub.t('ops.resetDemoConfirm'), Hub.t('ops.resetDemo'))) return;
+      button.disabled = true;
+      try {
+        await API.post('/api/demo/reset');
+        Hub.toast(Hub.t('ops.resetDemoDone'), 'success');
+      } catch (error) {
+        Hub.toast(error.message || Hub.t('common.error'), 'error');
+        button.disabled = false;
+      }
+    };
     document.addEventListener('langchange', () => hubs.length && draw());
     load().catch(e => { document.getElementById('app').textContent = e.message; });
     setInterval(() => load().catch(() => {}), 30000);   // mockup: refresh every 30 s
