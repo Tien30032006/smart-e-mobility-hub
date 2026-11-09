@@ -39,14 +39,14 @@ Some payment, smart-lock, and device workflows are simulations for demonstration
 
 ```mermaid
 flowchart TD
-  Student[Student pages] --> API[FastAPI application]
-  Operator[Operator pages] --> API
-  API --> Modules[Reservation · Charging · Operations · Simulation]
-  Modules --> Core[Shared core and HubNetworkManager]
-  Modules <--> Bus[Event bus and SSE]
-  Core --> SQLite[(SQLite persistence)]
-  Core --> Simulator[Demo simulator]
-  Simulation --> Snapshot[Read-only network snapshot]
+  Student[Student<br/>pages] --> API[FastAPI<br/>application]
+  Operator[Operator<br/>pages] --> API
+  API --> Modules[Reservation<br/>Charging<br/>Operations<br/>Simulation]
+  Modules --> Core[Shared core<br/>HubNetworkManager]
+  Modules <--> Bus[Event bus<br/>Server-Sent Events]
+  Core --> SQLite[(SQLite<br/>persistence)]
+  Core --> Simulator[Demo<br/>simulator]
+  Modules --> Snapshot[Read-only network<br/>snapshot]
 ```
 
 The frontend is served by FastAPI under `/app/`; shared browser libraries are served under `/shared/`. Backend modules use the shared network state and event bus. SQLite persists application state between restarts, while the simulator generates demo telemetry.
