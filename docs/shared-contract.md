@@ -76,7 +76,7 @@ Shared vehicle: `EVehicle.owner_id is None`. Private vehicle: `owner_id` = the s
 * Demo controls (operator): `POST /api/demo/reset`, `GET/POST /api/demo/simulator`, `POST /api/demo/telemetry {target_type: hub|vehicle, target_id, cut}`, `GET /api/demo/database`.
 * Hub status now has `data_connection: "ok" | "lost"` (lost while telemetry of that hub is cut).
 * Persistence: SQLite, see [database.md](database.md).
-* Business errors: `HTTPException(400/404/409, detail="…")` (409 = the resource was just taken by someone else). Not implemented yet: automatic HTTP 501.
+* Business errors: `HTTPException(400/404/409, detail="…")` (409 = the resource was just taken by someone else). `NotImplementedYet` exceptions are mapped by `src/backend/app.py` to HTTP 501 and include the owner, use case and hint fields.
 * Timestamps: ISO-8601 UTC (`datetime.now(timezone.utc)`).
 
 ## 7. Demo accounts (via `POST /api/auth/demo-login`, `DEMO_MODE=true`)

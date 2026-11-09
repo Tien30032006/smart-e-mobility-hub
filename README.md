@@ -1,291 +1,232 @@
-# 🛴⚡ Smart E-Mobility Hub - Electric Mobility Coordination System for the VNU-HCM Urban Area
+# Smart E-Mobility Hub
 
-[![Status: Skeleton](https://img.shields.io/badge/status-skeleton%20%2F%20in%20development-lightgrey.svg)]()
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
-[![Frontend HTML/CSS/JS](https://img.shields.io/badge/frontend-HTML%2FCSS%2FJS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-10%20passed%20%7C%2032%20todo-brightgreen.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A web application for coordinating shared electric vehicles, parking, charging hubs, and daily operations across a university district. The backend uses FastAPI and the frontend uses plain HTML, CSS, and JavaScript. Demo state is persisted in SQLite and updated by a simulator.
 
-> **Software Engineering Course Project - Talent Program, Computer Science**
-> **Ho Chi Minh City University of Technology (HCMUT)**
->
-> *Managing and coordinating a network of shared electric mobility resources
-> (bicycles, motorcycles, scooters), parking capacity and charging infrastructure
-> across the VNU-HCM Urban Area.*
+## Contents
 
----
+- [Overview](#overview)
+- [Features](#features)
+- [System architecture](#system-architecture)
+- [Actors and core capabilities](#actors-and-core-capabilities)
+- [Team and modules](#team-and-modules)
+- [Project structure](#project-structure)
+- [UI/UX and languages](#uiux-and-languages)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Demo workflow](#demo-workflow)
+- [Google Sign-In and phone access](#google-sign-in-and-phone-access)
+- [API and data](#api-and-data)
+- [Run checks](#run-checks)
+- [Team workflow](#team-workflow)
+- [Related documentation](#related-documentation)
 
-## 🌍 Overview
+## Overview
 
-The VNU-HCM Urban Area brings together multiple universities, dormitories,
-libraries, service facilities and public transportation hubs. As Metro Line 1
-opens up new travel patterns, students will increasingly combine a Metro ride
-with shared electric vehicles to move between campuses and functional areas -
-turning last-mile mobility into a distributed, multi-actor software problem,
-not just a hardware one.
+Smart E-Mobility Hub coordinates shared electric mobility resources across a university district. A Hub may represent a Metro station, dormitory, campus, library, or service area and can contain vehicles, parking spaces, and charging points. The application focuses on last-mile mobility workflows and operational coordination; devices and live network conditions are simulated.
 
-**Smart E-Mobility Hub** manages a network of **Mobility Hubs** (Metro station,
-dormitories, campuses, service areas), each containing parking spaces,
-charging points and electric vehicles, with near-real-time state updates from
-simulated data.
+## Features
 
-The core software-engineering focus:
+- Explore Hubs and view vehicle, parking-space, and charging-point availability.
+- Reserve a shared vehicle or parking space, pick up and return vehicles, view trips, and report issues.
+- Submit charging requests and view charging status and schedules.
+- Use operator pages to monitor the network, handle incidents, redistribute vehicles, and run What-if simulations.
+- Switch between English and Vietnamese, light and dark themes, and responsive mobile layouts.
+- Simulate device data and receive live updates over Server-Sent Events (SSE).
 
-- 🧠 **State management** for vehicles, parking spaces and charging points across many concurrently active Hubs.
-- 🔒 **Resource allocation & reservation handling** for shared, limited resources, with no double-booking.
-- 🔋 **Smart charging scheduling** that prioritizes vehicles by battery level and expected usage.
-- 📊 **Operational monitoring & incident handling** (overload detection, vehicle redistribution, device failures).
-- 🔮 **What-if Simulation** that evaluates hypothetical scenarios on a read-only snapshot, without touching live data.
-- 🌐 **Bilingual, accessible UI** (English / Vietnamese, light / dark mode, responsive, WCAG-minded) built with plain HTML/CSS/JS.
+Some payment, smart-lock, and device workflows are simulations for demonstration. Do not use them to collect real payments or control physical devices.
 
-> This project intentionally does **not** focus on IoT hardware or 3D map
-> interfaces. Data is simulated and kept in memory; no real database is required.
+## System architecture
 
----
-
-## 🏗 System Architecture
-
-```text
-┌──────────────────────────────┐     ┌──────────────────────────────┐
-│         Student UI           │     │         Operator UI          │
-│   (src/frontend/student/)    │     │   (src/frontend/operator/)   │
-└──────────────┬───────────────┘     └──────────────┬───────────────┘
-               └──────────────────┬─────────────────┘
-                                  │  shared/api-client.js  (REST + Bearer token)
-                                  ▼
-               ┌────────────────────────────────────┐
-               │      FastAPI app  (app.py)         │
-               │  auth · hubs · network status      │
-               └──────────────────┬─────────────────┘
-                                  ▼
-               ┌────────────────────────────────────┐
-               │       Business Module Layer        │
-               │      (src/backend/modules/)        │
-               │                                    │
-               │ • Reservation & Trip      Member 1 │
-               │ • Charging & Scheduling   Member 2 │
-               │ • Operations & Monitoring Member 3 │
-               │ • What-if Simulation      Member 4 │
-               └───────┬────────────────────┬───────┘
-                       │ events             │ read / write under lock
-                       ▼                    ▼
-        ┌─────────────────────┐   ┌────────────────────────────────┐
-        │  Event Bus          │   │  Shared Core        Member 5   │
-        │  core/event_bus.py  │   │  entities · enums · network    │
-        └─────────────────────┘   │  (HubNetworkManager)           │
-                                  └───────────────┬────────────────┘
-                                                  │ read-only snapshot()
-                                                  ▼
-                               ┌────────────────────────────────────┐
-                               │         Simulation Engine          │
-                               │ Works on a deep copy; never mutates│
-                               │ the live operational state         │
-                               └────────────────────────────────────┘
+```mermaid
+flowchart TD
+  Student[Student pages] --> API[FastAPI application]
+  Operator[Operator pages] --> API
+  API --> Modules[Reservation · Charging · Operations · Simulation]
+  Modules --> Core[Shared core and HubNetworkManager]
+  Modules <--> Bus[Event bus and SSE]
+  Core --> SQLite[(SQLite persistence)]
+  Core --> Simulator[Demo simulator]
+  Simulation --> Snapshot[Read-only network snapshot]
 ```
 
-Modules never import each other's internals when an event will do: they publish
-and subscribe through the **Event Bus**. Shared state lives only in
-`HubNetworkManager` and is always changed under `network.lock`.
+The frontend is served by FastAPI under `/app/`; shared browser libraries are served under `/shared/`. Backend modules use the shared network state and event bus. SQLite persists application state between restarts, while the simulator generates demo telemetry.
 
----
-
-## 👥 Actors & Core Capabilities
+## Actors and core capabilities
 
 | Actor | Capabilities |
 |---|---|
-| **Student** (shared or private vehicle) | Find a suitable Hub/vehicle · view availability & battery level · reserve a vehicle or parking space · pick up / return a vehicle · report issues · submit charging requests · schedule charging sessions |
-| **Operator** | Monitor the whole Hub network · handle alerts · redistribute vehicles · handle incidents · supervise and override smart charging · run What-if scenarios |
-| **System** (scheduler / simulator / sensors) | Push near-real-time state updates · run the charging-priority algorithm · execute What-if simulations |
+| Student | Find a Hub, inspect availability, reserve a vehicle or parking space, pick up and return a vehicle, report issues, and request charging. |
+| Operator | Monitor Hubs, manage alerts and incidents, coordinate vehicle redistribution, oversee charging, and run What-if scenarios. |
+| Simulator | Generate vehicle and charging telemetry and support repeatable demo scenarios. |
 
----
+## Team and modules
 
-## 🧩 Team & Modules
+| Area | Source | Guide |
+|---|---|---|
+| Reservation and trips | `src/backend/modules/reservation/` | [Member 1 TODO](docs/todo/member1.md) |
+| Charging and scheduling | `src/backend/modules/charging/` | [Member 2 TODO](docs/todo/member2.md) |
+| Operations and monitoring | `src/backend/modules/operations/` | [Member 3 TODO](docs/todo/member3.md) |
+| What-if simulation | `src/backend/modules/simulation/` | [Member 4 TODO](docs/todo/member4.md) |
+| Shared core and integration | `src/backend/core/`, `src/backend/app.py` | [Member 5 TODO](docs/todo/member5.md) |
 
-Each member owns one module end-to-end, from requirement specification to
-detailed design, and also contributes to the shared group deliverables.
-
-| Member | Module | Use cases | Personal TODO |
-|---|---|---|---|
-| **Member 1** | 🚲 Reservation & Trip<br>`modules/reservation/` | U1-U9: search, reserve vehicle/parking, cancel, pick up, return, report issue, payment & smart lock (mock) | [member1.md](docs/todo/member1.md) |
-| **Member 2** | 🔋 Charging & Scheduling<br>`modules/charging/` | UC-CH-01…10: charging requests, scheduling, priority algorithm, point monitoring, telemetry | [member2.md](docs/todo/member2.md) |
-| **Member 3** | 📊 Operations & Monitoring<br>`modules/operations/` | UC01-UC-OP09: dashboard, alerts, redistribution, incidents, charging oversight | [member3.md](docs/todo/member3.md) |
-| **Member 4** | 🔮 What-if Simulation<br>`modules/simulation/` | UC1-UC7: scenarios, templates, simulation, impact evaluation, recommendations, report | [member4.md](docs/todo/member4.md) |
-| **Member 5** | 🏛 Architecture & Integration<br>`core/`, `app.py`, docs | Shared core, integration tests, shared diagrams, final report & demo | [member5.md](docs/todo/member5.md) |
-
-👉 **Start with [`TEAM_TODO.md`](TEAM_TODO.md)**, then open your personal TODO file.
-The contract between modules (class ↔ code mapping, enums, events, cross-module
-functions) is in [`docs/shared-contract.md`](docs/shared-contract.md).
-
----
-
-## 📂 Repository Structure
+## Project structure
 
 ```text
-smart-e-mobility-hub/
-│
-├── README.md
-├── TEAM_TODO.md                  # assignments, overlaps, team rules, roadmap, demo script
-├── requirements.txt
-├── pytest.ini
-│
-├── configs/
-│   ├── hubs-data.json            # Demo data: hubs, vehicles, users
-│   ├── simulation-scenarios.json # Predefined What-if scenarios
-│   └── app.config.json
-│
-├── src/
-│   ├── backend/
-│   │   ├── app.py                # Application entry point (shared)
-│   │   ├── core/                 # Shared: entities, enums, state manager, event bus, auth
-│   │   ├── data/                 # Shared: seed data & config loader
-│   │   ├── modules/
-│   │   │   ├── reservation/      # Member 1
-│   │   │   ├── charging/         # Member 2
-│   │   │   ├── operations/       # Member 3
-│   │   │   └── simulation/       # Member 4
-│   │   └── tests/                # test_core (shared, green) + one test file per module
-│   │
-│   ├── frontend/
-│   │   ├── index.html            # Login + live Hub overview (shared)
-│   │   ├── student/              # Student screens
-│   │   ├── operator/             # Operator screens
-│   │   └── assets/               # css / js / img
-│   │
-│   └── shared/
-│       ├── api-client.js         # Shared frontend ↔ backend client
-│       └── i18n.js               # EN/VI dictionaries, language + theme switcher
-│
-├── docs/
-│   ├── shared-contract.md        # Inter-module contract
-│   ├── ui-guidelines.md          # Bilingual UI, design system & UX checklist
-│   └── todo/member{1..5}.md      # Personal task lists
-│
-└── scripts/
-    ├── run_backend.sh / .bat
-    ├── run_frontend.sh
-    └── seed_data.py
+configs/                 Hub data and demo scenario configuration
+data/                    Local SQLite database (not committed)
+docs/                    Guides, conventions, and module contracts
+scripts/                 Backend/demo startup and data reset commands
+src/backend/app.py       FastAPI entry point, static frontend, shared API
+src/backend/core/        Authentication, shared state, persistence, SSE, simulator
+src/backend/modules/     Reservation, charging, operations, simulation
+src/frontend/            Login, student, operator pages, and assets
+src/shared/              API client, i18n, SSE, and shared map helpers
+tests_js/                Frontend client checks
 ```
 
----
+## UI/UX and languages
 
-## 🎨 UI / UX & Languages
+- The interface supports English and Vietnamese; language preference is saved in the browser.
+- Light and dark themes are available from the top navigation.
+- Student and operator pages adapt to phone and desktop screens.
+- Visible text should use shared keys in `src/shared/i18n.js`; follow the [UI guidelines](docs/ui-guidelines.md) when adding or updating pages.
 
-- **Two languages:** switch **EN | VI** in the top bar. The choice is remembered; first visit follows your browser language.
-- **Light & dark mode** (follows your OS by default, toggle in the top bar).
-- Responsive from phone to desktop, keyboard-friendly (skip link, visible focus), 44 px touch targets, reduced-motion support.
-- Everything is driven by shared design tokens in `assets/css/style.css` and the dictionaries in `src/shared/i18n.js`.
-  Contributors: read [`docs/ui-guidelines.md`](docs/ui-guidelines.md) before building a page.
+## Requirements
 
----
+- Python 3.10 or newer.
+- A modern web browser.
+- Internet access for map tiles, GIS libraries, and Google Sign-In.
+- Ngrok only if you need to access the demo over HTTPS from a phone.
 
-## 🚀 Quick Start
+## Quick start
 
-### 1. Prerequisites
-- Python 3.10+
-- A modern browser (the frontend is static HTML/CSS/JS served by the backend)
+### Windows
 
-### 2. Set up
+Open PowerShell in the project directory:
+
+```powershell
+cd D:\HCMUT\CNPM\smart-e-mobility-hub
+py -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Create a local configuration file once. If `.env` already exists, keep it and edit only the variables you need:
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
+```
+
+Start the server from the project root:
+
+```powershell
+python -m uvicorn src.backend.app:app --reload --port 8000
+```
+
+You can also run `scripts\run_demo.bat` to create the virtual environment, install dependencies, and start the demo. Use `scripts\run_backend.bat` after the environment and dependencies are ready. Keep the server terminal open while using the app.
+
+### macOS or Linux
+
 ```bash
-git clone <repo-url>
-cd smart-e-mobility-hub
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env   # create only if it does not already exist
+python -m uvicorn src.backend.app:app --reload --port 8000
 ```
 
-### 3. Run the tests
-```bash
-python -m pytest                # expected: 10 passed, 32 skipped
-```
-Skipped tests are the members' TODOs. Remove `@SKIP` as each use case is implemented.
+Alternatively, run `bash scripts/run_demo.sh`. It creates `.venv` and `.env` if needed, then starts the app. The `--fresh` option deletes the current demo SQLite database so the next start loads seed data; use it only when you intend to discard saved demo data. The `--tunnel` option attempts to start ngrok if it is installed and configured.
 
-### 4. Start the app
-```bash
-uvicorn src.backend.app:app --reload --port 8000
-# or: scripts/run_backend.sh   (Windows: scripts\run_backend.bat)
-```
+## Demo workflow
 
-| What | URL |
+1. Start the backend and wait until the server is ready.
+2. Open the sign-in page:
+   - Home: <http://localhost:8000/> (redirects to `/app/`).
+   - Sign in: <http://localhost:8000/app/login.html>.
+3. Sign in with Google if OAuth is configured. Otherwise, set `DEMO_MODE=true` in `.env` and choose a demo account on the sign-in page.
+4. Students can explore Hubs, reserve vehicles or parking, submit charging requests, and view trips and wallet activity.
+5. Operators can monitor the network, manage incidents, and run simulations.
+6. At the end of a demo, use **Reset demo** in the Operator dashboard to restore seed data. Data is stored in `data/hub.db`, so restarting the server does not automatically clear it.
+
+Run the demo with one backend worker. Shared application state is held in the server process and SQLite; do not run multiple server instances against the same port and database.
+
+## Google Sign-In and phone access
+
+### Configure Google OAuth
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and select the correct project.
+2. In Google Auth Platform, create or select an OAuth client of type **Web application**.
+3. Under **Authorized JavaScript origins**, add each exact origin you use, such as `http://localhost:8000` and the tunnel's HTTPS origin. Include only the scheme, hostname, and port when applicable. Do not include `/app/login.html` or a trailing slash.
+4. Set the matching Client ID as `GOOGLE_CLIENT_ID` in `.env`, then restart the backend.
+5. If the tunnel domain changes, add its new origin to the same OAuth client and confirm the backend uses that client's ID.
+
+> The current sign-in page uses Google Identity Services in popup mode and the backend verifies the returned ID token. This flow does not require an Authorized redirect URI. A redirect-based OAuth flow would require a separate redirect URI.
+
+### Access the app from a phone over HTTPS
+
+1. Start the backend on port `8000` and leave it running.
+2. Open a second terminal and start ngrok:
+
+   ```powershell
+   ngrok http 8000
+   ```
+
+3. Open the HTTPS URL shown by ngrok on your phone. Add `/app/` to open the app directly; the root path `/` redirects to `/app/`.
+4. On a Free ngrok account, `ngrok http 8000` uses the static dev domain assigned to your account.
+5. Allow location access in the phone's browser. The map needs an Internet connection to load OpenStreetMap tiles.
+
+To troubleshoot, first check `http://localhost:8000/api/health`, then `http://localhost:8000/app/`. Test the tunnel only after both local URLs work. Forward one tunnel to the backend on port `8000`.
+
+See the [HTTPS tunnel guide](docs/demo-tunnel.md). Do not commit or share `.env`, OAuth client secrets, signing keys, payment secrets, or payment account details.
+
+## API and data
+
+| Path | Purpose |
 |---|---|
-| 🖥 Web UI | http://localhost:8000/app/ |
-| 📖 API docs (Swagger) | http://localhost:8000/docs |
-| ❤️ Health check | http://localhost:8000/api/health |
+| `/` | Redirects to `/app/` |
+| `/app/` | Web application |
+| `/docs` | Swagger API documentation |
+| `/api/health` | Server, simulator, and persistence status |
+| `/api/hubs` | Hub status list |
+| `/api/stream` | Server-Sent Events stream |
 
-### 5. Demo accounts
+Business routers are grouped under `/api/reservation`, `/api/charging`, `/api/operator`, and `/api/simulation`, alongside shared endpoints. Open `/docs` while the server is running for the complete endpoint list and interactive API tools.
 
-| Role | Email | user_id |
-|---|---|---|
-| Student (shared vehicles) | `an@hcmut.edu.vn` | `U-S01` |
-| Student (owns private EV `PV-001`) | `binh@hcmut.edu.vn` | `U-S02` |
-| Operator | `operator@hub.vn` | `U-OP1` |
+`HubNetworkManager` keeps the active state in memory. SQLite at `data/hub.db` stores a persistent copy and restores it on startup. Set `DATABASE_PATH` in `.env` to change the database location. See [docs/database.md](docs/database.md) for details.
 
-Log in from the web UI, or send the header `Authorization: Bearer <user_id>`:
-```bash
-curl -H "Authorization: Bearer U-OP1" http://localhost:8000/api/operator/dashboard
+## Run checks
+
+Run these commands from the project root:
+
+```powershell
+python -m pytest
+node tests_js/client.test.js
 ```
 
-> Endpoints that are not implemented yet return **HTTP 501** with the owner and
-> use case, e.g. `{"owner": "Member 3", "use_case": "UC01"}`.
+Test counts are intentionally omitted here because the test suite changes with the code.
 
----
+## Team workflow
 
-## 🔌 API Overview
+Current ownership assignments and course deliverables are tracked in [TEAM_TODO.md](TEAM_TODO.md). Keep shared state changes within the network lock, preserve module API contracts, and add new visible UI text to both language dictionaries.
 
-| Prefix | Module | Audience |
-|---|---|---|
-| `/api/auth`, `/api/hubs`, `/api/network` | Shared | everyone |
-| `/api/reservation` | Reservation & Trip (Member 1) | students |
-| `/api/charging` | Charging & Scheduling (Member 2) | students, operators, sensors (`/telemetry`) |
-| `/api/operator` | Operations & Monitoring (Member 3) | operators |
-| `/api/simulation` | What-if Simulation (Member 4) | operators |
+## Related documentation
 
-Full, interactive reference: **`/docs`** while the server is running.
+- [Team plan and ownership](TEAM_TODO.md)
+- [HTTPS tunnel guide](docs/demo-tunnel.md)
+- [SQLite persistence and reset](docs/database.md)
+- [Shared module contract](docs/shared-contract.md)
+- [UI, translation, and accessibility guidelines](docs/ui-guidelines.md)
+- [Member 1 TODO – Reservation & Trip](docs/todo/member1.md)
+- [Member 2 TODO – Charging](docs/todo/member2.md)
+- [Member 3 TODO – Operations](docs/todo/member3.md)
+- [Member 4 TODO – Simulation](docs/todo/member4.md)
+- [Member 5 TODO – Integration](docs/todo/member5.md)
+- [Python dependencies](requirements.txt)
+- [Backend source](src/backend/)
+- [Frontend source](src/frontend/)
 
----
-
-## ✅ What Is Already Working
-
-- Every entity from the class diagram, status enums, `HubNetworkManager` (thread-safe state, atomic `move_vehicle`, isolated `snapshot()`), event bus, mock authentication with role checks.
-- Demo network: 4 Hubs, 10 vehicles (including one private EV), 3 accounts.
-- All four module routers are wired into the app, so each member only replaces `todo(...)` stubs with real logic.
-- Frontend: login, role-based menu, live Hub overview, EN/VI language switcher, dark mode, and 8 stub pages that show a clear "not implemented yet - owner" message.
-
----
-
-## 🛣 Roadmap
-
-- [x] Shared core, demo data, authentication, event bus
-- [x] Module skeletons, API routes and test placeholders
-- [ ] Reservation & Trip (U1-U9)
-- [ ] Charging & Scheduling (UC-CH-01…10)
-- [ ] Operations & Monitoring (UC01-UC-OP09)
-- [ ] What-if Simulation (UC1-UC7)
-- [ ] End-to-end integration & demo rehearsal
-- [ ] Final report (requirements, design, demo screens)
-
----
-
-## 🤝 Team Rules
-
-1. Work only inside your own module (and your own HTML pages). To change `core/` or a function signature another member calls, tell the whole team first.
-2. Shared state may only be changed inside `with network.lock:`.
-3. When a use case is done, delete its `todo(...)` call, remove its `@SKIP` test marker, and keep `python -m pytest` green.
-4. Work on `feature/*` branches and open a Pull Request into `main`; never push directly to `main`.
-
----
-
-## 📄 License
+## License
 
 Released under the [MIT License](LICENSE).
-
-
-## Run the demo (TV5 foundation)
-```bash
-scripts/run_demo.sh [--fresh] [--tunnel]      # venv + deps + .env + server on :8000
-# open http://localhost:8000/app/login.html
-```
-* **Login**: Google Sign-In (set `GOOGLE_CLIENT_ID`) or demo accounts when `DEMO_MODE=true`.
-* **Data**: persisted in SQLite (`data/hub.db`), see `docs/database.md`; `scripts/reset_demo.sh` returns to the seed data.
-* **Realtime**: the simulator moves battery / hub occupancy / charger faults; browsers receive them over SSE (`/api/stream`).
-* **Tests**: `pytest` (backend) and `node tests_js/client.test.js` (frontend client).

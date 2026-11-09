@@ -2,11 +2,11 @@
 
 * Your spec document: **what_if_template.docx**
 * Code folder: `src/backend/modules/simulation/`
-* UI pages: `operator/what-if.html`
+* UI pages: `src/frontend/operator/what-if.html`
 * Your tests: `src/backend/tests/test_simulation.py` (remove `@SKIP` as each use case is finished)
-* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `src/backend/core/entities.py`, `src/backend/core/state_manager.py`
 
-Every place that needs work already has a stub function that calls `todo(...)` with a docstring of guidance – find them with `grep -rn "todo(" src/backend/modules/simulation/`. Calling an unfinished endpoint returns HTTP 501 with your name.
+The simulation backend and operator page are present. The checklist below still tracks specification-level acceptance criteria and polish; a function or page being present does not by itself mean every criterion is complete. Search with `rg "todo\\(" src/backend/modules/simulation/` to find any remaining runtime stubs.
 
 ## A. Code (work in order P0 → P1 → P2)
 
@@ -25,7 +25,7 @@ Every place that needs work already has a stub function that calls `todo(...)` w
   - 3 kinds: vehicle relocation (exact `plan` format from Member 3), charging reschedule, redirecting users to another Hub.
 - [ ] **UC2 scenario templates** — `scenarios.list_templates`, `create_from_template`
   - Read `configs/simulation-scenarios.json` (4 templates already there; add `vehicle_concentration`).
-- [ ] **API + UI** — `routes.py` is already scaffolded; build the `operator/what-if.html` page
+- [ ] **API + UI** — simulation routes and the `operator/what-if.html` page
   - Parameter form, per-Hub impact table, recommendation list.
 
 ### P2 – polish

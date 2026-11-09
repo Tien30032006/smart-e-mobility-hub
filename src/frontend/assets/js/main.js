@@ -138,6 +138,21 @@ const Hub = (() => {
     }
     const main = document.querySelector('main'); if (main) main.id = 'main';
     drawNav(); I18n.apply();
+    /* Ensure every authenticated view receives the demo reset signal, including pages
+       that do not otherwise subscribe to live data. */
+    const startResetListener = () => {
+      if (typeof Stream !== 'undefined' && !window.__hubResetListener) {
+        window.__hubResetListener = true;
+        Stream.on('system_reset', () => window.location.reload());
+      }
+    };
+    if (typeof Stream !== 'undefined') startResetListener();
+    else {
+      const streamScript = document.createElement('script');
+      streamScript.src = '/shared/stream.js';
+      streamScript.onload = startResetListener;
+      document.head.appendChild(streamScript);
+    }
     return s;
   }
 

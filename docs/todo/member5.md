@@ -3,7 +3,7 @@
 Member 5 has no dedicated use-case module; this role owns the **shared** parts so the 4 modules fit together and the submission stays consistent.
 (If your team splits roles differently, hand the items below to the appropriate people.)
 
-* Folders/files you own: `src/backend/core/`, `src/backend/app.py`, `src/backend/data/`, `configs/`, `src/shared/`, `src/frontend/index.html` + `assets/`, `scripts/`, `docs/`
+* Folders/files you own: `src/backend/core/`, `src/backend/app.py`, `src/backend/data/`, `configs/`, `src/shared/`, `src/frontend/index.html` + `src/frontend/assets/`, `scripts/`, `docs/`
 * Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, the team's class diagram
 
 ## A. Code & integration
@@ -15,15 +15,15 @@ Member 5 has no dedicated use-case module; this role owns the **shared** parts s
 - [ ] Set up the git workflow: `main` always runnable, PR + review, branch naming rules
 
 ### P1
-- [ ] Wire Member 3's `register_event_handlers` into `app.py` startup and enable Member 2's simulator (`telemetry.start_simulator`) once those functions are done
+- [x] Wire Operations event handlers into `app.py` startup and run the shared simulator/charging telemetry integration
 - [ ] Extend `configs/hubs-data.json` / `seed_data.py` as the demo requires (nearly full Hub, low-battery vehicles, broken charging point) – ask the 4 members what data they need
 - [ ] End-to-end integration tests for the 4 scenarios in `TEAM_TODO.md` (add `tests/test_integration.py`)
 - [ ] Concurrency checks: many requests reserving the same resource (combine the tests of Members 1 and 2)
 
 ### P2
 - [ ] Shared UI: keep `shared/i18n.js` complete (EN + VI keys for every page), review members' pages against `docs/ui-guidelines.md` (contrast, 44px targets, dark mode, no hard-coded text)
-- [ ] A script to quickly reset demo data before each rehearsal (`scripts/seed_data.py`)
-- [ ] Cleanup: remove leftover `todo(...)` calls, outdated docstrings and unused files
+- [x] Provide demo reset commands (`scripts/reset_demo.sh`, `POST /api/demo/reset`, and `scripts/seed_data.py --reset-db`)
+- [ ] Review remaining cleanup candidates; module runtime stubs can be searched with `rg "todo\\(" src/backend/modules`
 
 ## B. Shared documents (you lead; the others give feedback)
 
@@ -54,6 +54,6 @@ In addition, like every other member, Member 5 must still submit **individual** 
 - [x] SQLite persistence (`core/database.py`, [docs/database.md](../database.md)), `POST /api/demo/reset`
 - [x] Toast / modal / bottom-sheet / progress components, EN+VI keys `auth.*`, `live.*`
 - [x] `.env.example`, `scripts/run_demo.sh`, `scripts/reset_demo.sh`, tests: `test_auth`, `test_persistence`, `test_stream_simulator`, `test_e2e_demo`, `tests_js/client.test.js`
-- [ ] Create the Google OAuth Client ID, add `http://localhost:8000` + the HTTPS tunnel URL, put it in `.env` (cannot be done in code)
-- [ ] Ask TV2/TV3/TV4 to register their stores in `core/demo.py` (alerts, incidents, relocation orders, charging audit, simulation results)
+- [ ] Confirm the Web OAuth client matches `GOOGLE_CLIENT_ID` in the local `.env` and allow `http://localhost:8000` plus the current HTTPS tunnel origin (cannot be configured in code)
+- [x] Register persistent Operations stores in `core/demo.py`; simulation results remain in memory and are lost on restart
 - [ ] Rehearse 3x with `scripts/reset_demo.sh`; test on a real phone through the tunnel

@@ -16,7 +16,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .core.api_shared import router as shared_router
@@ -174,6 +174,10 @@ def create_app() -> FastAPI:
         if request.url.path.startswith(("/app", "/shared")):
             response.headers["Cache-Control"] = "no-store, max-age=0"
         return response
+
+    @app.get("/", include_in_schema=False)
+    async def frontend_home():
+        return RedirectResponse(url="/app/", status_code=307)
 
     app.mount("/shared", StaticFiles(directory=SRC_DIR / "shared"), name="shared")
     app.mount("/app", StaticFiles(directory=SRC_DIR / "frontend", html=True), name="frontend")

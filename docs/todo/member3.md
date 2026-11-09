@@ -2,11 +2,11 @@
 
 * Your spec document: **Operator_Use_Case_Specification.docx**
 * Code folder: `src/backend/modules/operations/`
-* UI pages: `operator/dashboard.html`, `operator/incidents.html` and (shared with Member 2) `operator/charging.html`
+* UI pages: `src/frontend/operator/dashboard.html`, `src/frontend/operator/incidents.html` and (shared with Member 2) `src/frontend/operator/charging.html`
 * Your tests: `src/backend/tests/test_operations.py` (remove `@SKIP` as each use case is finished)
-* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `core/entities.py`, `core/state_manager.py`
+* Read first: `TEAM_TODO.md`, `docs/shared-contract.md`, `src/backend/core/entities.py`, `src/backend/core/state_manager.py`
 
-Every place that needs work already has a stub function that calls `todo(...)` with a docstring of guidance – find them with `grep -rn "todo(" src/backend/modules/operations/`. Calling an unfinished endpoint returns HTTP 501 with your name.
+The Operations backend and operator pages are implemented for the listed flows. Use the checklist below for course-spec and deliverable tracking; it may not reflect every code change. Search with `rg "todo\\(" src/backend/modules/operations/` to find any remaining runtime stubs.
 
 ## A. Code (work in order P0 → P1 → P2)
 
