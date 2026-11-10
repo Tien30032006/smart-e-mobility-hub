@@ -1,5 +1,7 @@
 # Smart E-Mobility Hub
 
+<p align="center"><img src="src/frontend/assets/img/brand-logo.png" alt="Smart E-Mobility Hub UT logo" width="280"></p>
+
 A web application for coordinating shared electric vehicles, parking, charging hubs, and daily operations across a university district. The backend uses FastAPI and the frontend uses plain HTML, CSS, and JavaScript. Demo state is persisted in SQLite and updated by a simulator.
 
 ## Contents

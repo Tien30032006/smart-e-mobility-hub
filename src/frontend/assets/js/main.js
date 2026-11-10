@@ -8,8 +8,8 @@
 if (!document.querySelector('link[rel~="icon"]')) {
   const favicon = document.createElement('link');
   favicon.rel = 'icon';
-  favicon.type = 'image/svg+xml';
-  favicon.href = '/app/assets/img/favicon.svg';
+  favicon.type = 'image/png';
+  favicon.href = '/app/assets/img/brand-mark.png';
   document.head.appendChild(favicon);
 }
 
@@ -80,7 +80,7 @@ const Hub = (() => {
     const sub = role ? `<small>${esc(t('role.' + role))}</small>` : '';
     nav.setAttribute('aria-label', t('common.mainNav'));
     nav.innerHTML =
-      `<a class="brand" href="/app/index.html"><span class="logo">${icon('zap')}</span><span class="t"><span>${esc(t('app.name'))}</span>${sub}</span></a>` +
+      `<a class="brand" href="/app/index.html"><span class="logo"><img src="/app/assets/img/brand-mark.png" alt=""></span><span class="t"><span>${esc(t('app.name'))}</span>${sub}</span></a>` +
       `<div class="links">${items.map(([f, k, ic]) =>
         `<a href="${base}${f}"${f === activeFile ? ' aria-current="page"' : ''}>${role === 'operator' ? icon(ic) : ''}${esc(t(k))}</a>`).join('')}</div>` +
       `<div class="tools">` +
