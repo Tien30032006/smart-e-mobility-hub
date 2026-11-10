@@ -23,7 +23,16 @@ const Stream = (() => {
   function run(name, data) {
     (handlers[name] || []).forEach(fn => { try { fn(data); } catch (e) { console.error('stream handler', name, e); } });
   }
+  function runReset(data) {
+    run('system_reset', data);
+    // A demo reset replaces all server-side records. Refresh any currently subscribed
+    // data views without reloading the document or losing edits in unrelated forms.
+    for (const name of ['vehicle_updated', 'alert_created', 'reservation_changed', 'payment_updated']) {
+      run(name, { ...data, reset: true });
+    }
+  }
   function deliver(name, data) {
+    if (name === 'system_reset') { runReset(data); return; }
     const now = Date.now(), wait = api.throttleMs - (now - (lastRun[name] || 0));
     if (wait <= 0) { lastRun[name] = now; run(name, data); return; }
     clearTimeout(pending[name]);

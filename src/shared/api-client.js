@@ -66,6 +66,8 @@ const API = (() => {
     async loginPassword(email, password) { const s = await request('POST', '/api/auth/login', { email, password }); setSession(s); return s; },
     async register(data) { const s = await request('POST', '/api/auth/register', data); setSession(s); return s; },
     async loginGoogle(credential) { const s = await request('POST', '/api/auth/google', { credential }); setSession(s); return s; },
+    requestPasswordReset: (email) => request('POST', '/api/auth/password-reset/request', { email }),
+    completePasswordReset: (token, new_password) => request('POST', '/api/auth/password-reset/complete', { token, new_password }),
     async refreshProfile() {
       const me = await request('GET', '/api/me');
       const s = session(); if (s) setSession({ ...s, full_name: me.full_name, student_code: me.student_code, onboarded: me.onboarded });

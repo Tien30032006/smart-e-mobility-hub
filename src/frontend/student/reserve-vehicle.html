@@ -203,7 +203,7 @@
           </div>
           <div style="margin-bottom: 16px; font-size:0.85rem; color:var(--muted);">
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-              <input type="checkbox" id="chk-fail-pay"> <span>Mô phỏng thanh toán thất bại</span>
+              <input type="checkbox" id="chk-fail-pay"> <span data-i18n="reserve.simulatePaymentFailure">Simulate payment failure</span>
             </label>
           </div>
           <button id="btn-submit-vehicle" class="button" style="width:100%;">
@@ -227,9 +227,9 @@
           <div class="form-row" id="p-duration-row" style="display:none;">
             <label data-i18n="reserve.duration">Duration</label>
             <select id="p-duration-select">
-              <option value="2">2 hours</option>
-              <option value="3" selected>3 hours</option>
-              <option value="4">4 hours</option>
+              <option value="2" data-i18n="reserve.duration2">2 hours</option>
+              <option value="3" selected data-i18n="reserve.duration3">3 hours</option>
+              <option value="4" data-i18n="reserve.duration4">4 hours</option>
             </select>
           </div>
           <button id="btn-submit-parking" class="button" style="width:100%;">
@@ -399,16 +399,16 @@
         <div class="pass-card">
           <div class="pass-header">
             <div>
-              <span class="badge ${isVehicle ? '' : 'secondary'}">${isVehicle ? 'VEHICLE PASS' : 'PARKING PASS'}</span>
+              <span class="badge ${isVehicle ? '' : 'secondary'}">${Hub.esc(Hub.t(isVehicle ? 'trip.vehiclePass' : 'trip.parkingPass'))}</span>
               <h3 style="margin:4px 0 0 0;">${Hub.esc(res.reservation_id)}</h3>
             </div>
-            <span class="chip"><span>${Hub.esc(res.status)}</span></span>
+            <span class="chip"><span>${Hub.esc(Hub.t('reserve.status.' + res.status))}</span></span>
           </div>
 
           <div>
             <div style="font-size:0.85rem; color:var(--muted);">${Hub.esc(Hub.t('trip.from'))}</div>
             <div style="font-weight:600; font-size:1.05rem;">${Hub.esc(hubName)}</div>
-            <div style="margin-top:6px; font-size:0.85rem; color:var(--muted);">Resource ID: <b>${Hub.esc(res.resource_id)}</b></div>
+            <div style="margin-top:6px; font-size:0.85rem; color:var(--muted);">${Hub.esc(Hub.t('trip.resourceId'))}: <b>${Hub.esc(res.resource_id)}</b></div>
           </div>
 
           <div style="background:var(--bg); padding:12px; border-radius:8px; border:1px solid var(--line); text-align:center;">
@@ -417,7 +417,7 @@
           </div>
 
           <div class="qr-box" id="pass-qrcode" style="width:140px; height:140px; padding:10px;"></div>
-          <div style="font-size:0.75rem; color:var(--muted); text-align:center;">Scan with IoT dock camera</div>
+          <div style="font-size:0.75rem; color:var(--muted); text-align:center;">${Hub.esc(Hub.t('trip.scanDock'))}</div>
 
           <div style="display:flex; flex-direction:column; gap:10px;">
             ${isVehicle && res.status === 'confirmed' ? `
@@ -550,6 +550,17 @@
     };
 
     loadHubsAndState();
+    document.addEventListener('langchange', () => {
+      const vehicleHub = document.getElementById('v-hub-select').value;
+      const vehicleId = document.getElementById('v-vehicle-select').value;
+      const parkingHub = document.getElementById('p-hub-select').value;
+      populateHubDropdowns();
+      if (vehicleHub) document.getElementById('v-hub-select').value = vehicleHub;
+      if (parkingHub) document.getElementById('p-hub-select').value = parkingHub;
+      updateVehicleOptions();
+      if (vehicleId) document.getElementById('v-vehicle-select').value = vehicleId;
+      renderPass(currentActiveRes);
+    });
   </script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>

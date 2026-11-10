@@ -45,6 +45,7 @@ def issue_token(user: User, ttl_minutes: Optional[int] = None) -> str:
     now = datetime.now(timezone.utc)
     ttl = ttl_minutes if ttl_minutes is not None else settings.jwt_ttl_minutes
     payload = {"sub": user.user_id, "role": user.user_role.value, "email": user.email,
+               "ver": int(_meta(user).get("auth_version", 0)),
                "iat": now, "exp": now + timedelta(minutes=ttl)}
     return jwt.encode(payload, settings.jwt_secret, algorithm=ALGORITHM)
 
@@ -60,6 +61,8 @@ def user_from_token(token: str) -> User:
     user = network.users.get(claims["sub"])
     if user is None:
         raise HTTPException(status_code=401, detail="Unknown user")
+    if claims.get("ver", 0) != int(_meta(user).get("auth_version", 0)):
+        raise HTTPException(status_code=401, detail="Session expired")
     return user
 
 
@@ -157,12 +160,18 @@ def login_password(email: str, password: str) -> User:
     return user
 
 
-def change_password(user: User, new_password: str, current_password: str = "") -> None:
+def change_password(user: User, new_password: str, current_password: str = "", *,
+                   verify_current_password: bool = True) -> None:
     validate_password(new_password, user.email)
-    meta = _meta(user)
-    if meta.get("password_hash") and not verify_password(current_password, meta["password_hash"]):
-        raise HTTPException(status_code=401, detail="Current password is incorrect.")
-    meta["password_hash"] = hash_password(new_password)
+    with network.lock:
+        meta = _meta(user)
+        if (verify_current_password and meta.get("password_hash")
+                and not verify_password(current_password, meta["password_hash"])):
+            raise HTTPException(status_code=401, detail="Current password is incorrect.")
+        meta["password_hash"] = hash_password(new_password)
+        meta["auth_version"] = int(meta.get("auth_version", 0)) + 1
+        from .database import persistence
+        persistence.delete_password_reset_tokens(user.user_id)
 
 
 # ---- demo login ----------------------------------------------------------------
@@ -245,6 +254,9 @@ def sign_in_with_google_claims(claims: dict) -> User:
             # First Google login on an e-mail/password account. That password was never e-mail-verified,
             # so drop it: otherwise whoever pre-registered this address would keep access.
             meta["password_hash"] = ""
+            meta["auth_version"] = int(meta.get("auth_version", 0)) + 1
+            from .database import persistence
+            persistence.delete_password_reset_tokens(user.user_id)
         meta["google_sub"] = claims.get("sub")
         meta["picture"] = claims.get("picture", meta.get("picture", ""))
     return user

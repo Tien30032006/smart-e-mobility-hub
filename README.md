@@ -164,6 +164,10 @@ Run the demo with one backend worker. Shared application state is held in the se
 
 > The current sign-in page uses Google Identity Services in popup mode and the backend verifies the returned ID token. This flow does not require an Authorized redirect URI. A redirect-based OAuth flow would require a separate redirect URI.
 
+### Configure password reset e-mail
+
+Password-based users can request one-time password-reset links by e-mail. The message includes the configured public link and a localhost link for the computer running the backend; both share one token, and completing the reset through either link invalidates the other. To enable delivery, configure an SMTP sender and the app's public URL in the local environment, then restart the backend. Keep sender credentials out of source control. For Gmail, use an App Password rather than your regular account password. The form remains unavailable until e-mail delivery and persistent storage are configured. Google-only accounts should recover access through Google.
+
 ### Access the app from a phone over HTTPS
 
 1. Start the backend on port `8000` and leave it running.
