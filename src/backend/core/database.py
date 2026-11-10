@@ -20,7 +20,7 @@ import hashlib
 import json
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional
 
@@ -42,8 +42,12 @@ CREATE TABLE IF NOT EXISTS users (
     user_id TEXT PRIMARY KEY, role TEXT NOT NULL, full_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE COLLATE NOCASE, student_code TEXT DEFAULT '', operator_id TEXT DEFAULT '',
     phone TEXT DEFAULT '', has_private_ev INTEGER DEFAULT 0, google_sub TEXT, picture TEXT DEFAULT '',
-    onboarded INTEGER DEFAULT 0, created_at TEXT, password_hash TEXT DEFAULT ''
+    onboarded INTEGER DEFAULT 0, created_at TEXT, password_hash TEXT DEFAULT '', auth_version INTEGER DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
 CREATE TABLE IF NOT EXISTS hubs (
     hub_id TEXT PRIMARY KEY, name TEXT NOT NULL, lat REAL, lng REAL, capacity INTEGER NOT NULL
 );
@@ -159,6 +163,78 @@ class Persistence:
         cols = {r[1] for r in self._conn.execute("PRAGMA table_info(users)")}
         if "password_hash" not in cols:
             self._conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT DEFAULT ''")
+        if "auth_version" not in cols:
+            self._conn.execute("ALTER TABLE users ADD COLUMN auth_version INTEGER DEFAULT 0")
+
+    def replace_password_reset_token(self, user_id: str, token_hash: str, expires_at: str) -> None:
+        """Keep only the newest outstanding reset token for a user."""
+        if not self.enabled:
+            raise RuntimeError("Password reset requires database persistence")
+        now = datetime.now(timezone.utc).isoformat()
+        with self._io_lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                self._conn.execute("DELETE FROM password_reset_tokens WHERE expires_at<=?", (now,))
+                self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id=?", (user_id,))
+                self._conn.execute(
+                    "INSERT INTO password_reset_tokens(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)",
+                    (token_hash, user_id, expires_at, now))
+                self._conn.execute("COMMIT")
+            except Exception:
+                self._conn.execute("ROLLBACK")
+                raise
+
+    def password_reset_user(self, token_hash: str) -> Optional[str]:
+        if not self.enabled:
+            return None
+        with self._io_lock:
+            row = self._conn.execute(
+                "SELECT user_id,expires_at FROM password_reset_tokens WHERE token_hash=?", (token_hash,)
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            expires_at = datetime.fromisoformat(row["expires_at"])
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at <= datetime.now(timezone.utc):
+                self.consume_password_reset_token(token_hash)
+                return None
+        except (TypeError, ValueError):
+            self.consume_password_reset_token(token_hash)
+            return None
+        return row["user_id"]
+
+    def delete_password_reset_tokens(self, user_id: str) -> None:
+        if not self.enabled:
+            return
+        with self._io_lock:
+            self._conn.execute("DELETE FROM password_reset_tokens WHERE user_id=?", (user_id,))
+
+    def consume_password_reset_token(self, token_hash: str) -> bool:
+        """Atomically remove a live token so it cannot be used twice."""
+        if not self.enabled:
+            return False
+        with self._io_lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                row = self._conn.execute(
+                    "SELECT expires_at FROM password_reset_tokens WHERE token_hash=?", (token_hash,)
+                ).fetchone()
+                self._conn.execute("DELETE FROM password_reset_tokens WHERE token_hash=?", (token_hash,))
+                self._conn.execute("COMMIT")
+            except Exception:
+                self._conn.execute("ROLLBACK")
+                raise
+        if row is None:
+            return False
+        try:
+            expires_at = datetime.fromisoformat(row["expires_at"])
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            return expires_at > datetime.now(timezone.utc)
+        except (TypeError, ValueError):
+            return False
 
     def close(self) -> None:
         with self._io_lock:
@@ -212,6 +288,7 @@ class Persistence:
                 "google_sub": extra.get("google_sub"), "picture": extra.get("picture", ""),
                 "onboarded": int(extra.get("onboarded", True)), "created_at": extra.get("created_at"),
                 "password_hash": extra.get("password_hash", ""),
+                "auth_version": int(extra.get("auth_version", 0)),
             })
         for h in n.hubs.values():
             hubs.append({"hub_id": h.hub_id, "name": h.name, "lat": h.location.get("lat"),
@@ -389,7 +466,7 @@ class Persistence:
                            student_code=r["student_code"] or "", has_private_ev=bool(r["has_private_ev"]))
         user._db = {"phone": r["phone"] or "", "google_sub": r["google_sub"], "picture": r["picture"] or "",
                     "onboarded": bool(r["onboarded"]), "created_at": r["created_at"],
-                    "password_hash": r["password_hash"] or ""}
+                    "password_hash": r["password_hash"] or "", "auth_version": r["auth_version"] or 0}
         return user
 
     # ---- maintenance ---------------------------------------------------------
@@ -398,7 +475,7 @@ class Persistence:
         if not self.enabled:
             return
         with self._io_lock:
-            for t in ("users", "hubs", "parking_spaces", "charging_points", "vehicles", "reservations",
+            for t in ("users", "password_reset_tokens", "hubs", "parking_spaces", "charging_points", "vehicles", "reservations",
                       "charging_sessions", "events", "module_state"):
                 self._conn.execute(f"DELETE FROM {t}")
             self._hashes.clear()

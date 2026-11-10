@@ -5,11 +5,12 @@ import asyncio
 import re
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import auth
+from . import password_reset
 from .config import settings
 from .database import persistence
 from .demo import reset_demo
@@ -47,6 +48,15 @@ class PasswordIn(BaseModel):
     current_password: str = Field(default="", max_length=128)
 
 
+class PasswordResetRequestIn(BaseModel):
+    email: str = Field(max_length=200)
+
+
+class PasswordResetCompleteIn(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=128)
+
+
 class ProfilePatch(BaseModel):
     full_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
     student_code: Optional[str] = None
@@ -74,6 +84,7 @@ def auth_config():
     """What the login page needs: Google client id (public) and whether demo login is on."""
     return {"google_client_id": settings.google_client_id, "demo_mode": settings.demo_mode,
             "min_password_length": auth.MIN_PASSWORD_LEN,
+            "password_reset_enabled": password_reset.is_enabled(),
             "demo_accounts": auth.demo_accounts() if settings.demo_mode else []}
 
 
@@ -107,6 +118,24 @@ def login(body: LoginIn):
 def set_password(body: PasswordIn, user: User = Depends(auth.current_user)):
     """Set (Google-only accounts) or change the password of the signed-in user."""
     auth.change_password(user, body.new_password, body.current_password)
+    return {"ok": True}
+
+
+@router.post("/api/auth/password-reset/request", tags=["Auth"])
+def request_password_reset(body: PasswordResetRequestIn, request: Request, background_tasks: BackgroundTasks):
+    """Send a one-time reset link. The response does not reveal whether an account exists."""
+    if not password_reset.is_enabled():
+        raise HTTPException(status_code=503, detail="Password reset e-mail is not configured.")
+    client_ip = request.client.host if request.client else "unknown"
+    reset_email = password_reset.create_reset_email(body.email, client_ip)
+    if reset_email:
+        background_tasks.add_task(password_reset.send_reset_email, *reset_email)
+    return {"ok": True, "message": "If a password-based account exists for this e-mail, a reset link will be sent."}
+
+
+@router.post("/api/auth/password-reset/complete", tags=["Auth"])
+def complete_password_reset(body: PasswordResetCompleteIn):
+    password_reset.complete_reset(body.token, body.new_password)
     return {"ok": True}
 
 

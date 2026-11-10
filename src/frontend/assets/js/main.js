@@ -5,6 +5,14 @@
  * All user-facing text goes through I18n (data-i18n="key" in HTML, I18n.t('key') in JS) - never hard-code a language.
  * Draw functions are re-run automatically when the language changes, so build your DOM inside draw().
  */
+if (!document.querySelector('link[rel~="icon"]')) {
+  const favicon = document.createElement('link');
+  favicon.rel = 'icon';
+  favicon.type = 'image/svg+xml';
+  favicon.href = '/app/assets/img/favicon.svg';
+  document.head.appendChild(favicon);
+}
+
 const Hub = (() => {
   const t = (k, v) => I18n.t(k, v);
 
@@ -64,13 +72,17 @@ const Hub = (() => {
     const items = s ? (MENU[s.role] || []) : [];
     const base = s ? '/app/' + s.role + '/' : '/app/';
     const here = location.pathname.split('/').pop();
+    // Reservation pages are entered from Discover (with a selected hub) or Trips (viewing a pass).
+    const activeFile = here === 'reserve-vehicle.html'
+      ? (new URLSearchParams(location.search).has('hub_id') ? 'find-hub.html' : 'my-trips.html')
+      : here;
     const dark = I18n.theme === 'dark';
     const sub = role ? `<small>${esc(t('role.' + role))}</small>` : '';
     nav.setAttribute('aria-label', t('common.mainNav'));
     nav.innerHTML =
       `<a class="brand" href="/app/index.html"><span class="logo">${icon('zap')}</span><span class="t"><span>${esc(t('app.name'))}</span>${sub}</span></a>` +
       `<div class="links">${items.map(([f, k, ic]) =>
-        `<a href="${base}${f}"${f === here ? ' aria-current="page"' : ''}>${role === 'operator' ? icon(ic) : ''}${esc(t(k))}</a>`).join('')}</div>` +
+        `<a href="${base}${f}"${f === activeFile ? ' aria-current="page"' : ''}>${role === 'operator' ? icon(ic) : ''}${esc(t(k))}</a>`).join('')}</div>` +
       `<div class="tools">` +
         `<div class="seg language-switch" role="group" aria-label="${esc(t('common.language'))}">` +
           I18n.SUPPORTED.map(l => `<button type="button" data-lang="${l}" aria-pressed="${I18n.lang === l}" lang="${l}">${l.toUpperCase()}</button>`).join('') +
@@ -90,7 +102,7 @@ const Hub = (() => {
       if (!tb) { tb = document.createElement('nav'); tb.id = 'tabbar'; tb.className = 'tabbar'; document.body.appendChild(tb); }
       tb.setAttribute('aria-label', t('common.mainNav'));
       tb.innerHTML = items.map(([f, k, ic, sk]) =>
-        `<a href="${base}${f}"${f === here ? ' aria-current="page"' : ''}>${icon(ic)}<span>${esc(t(sk))}</span></a>`).join('');
+        `<a href="${base}${f}"${f === activeFile ? ' aria-current="page"' : ''}>${icon(ic)}<span>${esc(t(sk))}</span></a>`).join('');
     } else if (tb) tb.remove();
   }
 
@@ -138,12 +150,14 @@ const Hub = (() => {
     }
     const main = document.querySelector('main'); if (main) main.id = 'main';
     drawNav(); I18n.apply();
-    /* Ensure every authenticated view receives the demo reset signal, including pages
-       that do not otherwise subscribe to live data. */
+    /* Keep demo resets data-only. Reloading the document here discarded unfinished form
+       input (for example, a name being entered during onboarding). */
     const startResetListener = () => {
       if (typeof Stream !== 'undefined' && !window.__hubResetListener) {
         window.__hubResetListener = true;
-        Stream.on('system_reset', () => window.location.reload());
+        Stream.on('system_reset', () => {
+          window.dispatchEvent(new CustomEvent('hub:data-reset'));
+        });
       }
     };
     if (typeof Stream !== 'undefined') startResetListener();

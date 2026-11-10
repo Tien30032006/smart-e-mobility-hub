@@ -109,6 +109,7 @@
       catch(e) { box.textContent = e.message; }
     };
     document.getElementById('refresh').onclick = () => load().catch(() => {});
+    window.addEventListener('hub:data-reset', () => load().catch(() => {}));
     document.getElementById('reset-demo').onclick = async event => {
       const button = event.currentTarget;
       if (!await Hub.confirmDialog(Hub.t('ops.resetDemo'), Hub.t('ops.resetDemoConfirm'), Hub.t('ops.resetDemo'))) return;
