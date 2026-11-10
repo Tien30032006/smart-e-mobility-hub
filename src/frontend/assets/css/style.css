@@ -3,7 +3,7 @@
  * visible focus rings, 44px touch targets, reduced-motion support. No raw hex outside :root.
  */
 :root {
-  --bg: #f5f6f1; --surface: #ffffff; --surface-2: #f0f3ec; --deep: #0f3d2e; --deep-2: #164c3a; --on-deep: #e6f2ec; --mint: #e6f3ec; --map: #e4ead9; --road: #ffffff;
+  --bg: #f5f6f1; --surface: #ffffff; --surface-2: #f0f3ec; --deep: #0f3d2e; --deep-2: #164c3a; --on-deep: #e6f2ec; --mint: #e6f3ec; --map: #e4ead9; --road: #ffffff; --logo-bg: #ffffff;
   --ink: #123027; --muted: #566a60; --line: #e1e6dc;
   --brand: #0a7a5b; --brand-strong: #07604a; --brand-soft: #e3f2ea; --on-brand: #ffffff;
   --info: #1f5fbf; --info-soft: #e4eefc;
@@ -17,7 +17,7 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #0c1511; --surface: #14211b; --surface-2: #1a2922; --deep: #0a2a20; --deep-2: #113a2d; --on-deep: #dff0e8; --mint: #173a2c; --map: #1c2b23; --road: #263a31;
+  --bg: #0c1511; --surface: #14211b; --surface-2: #1a2922; --deep: #0a2a20; --deep-2: #113a2d; --on-deep: #dff0e8; --mint: #173a2c; --map: #1c2b23; --road: #263a31; --logo-bg: #ffffff;
   --ink: #e9f2ee; --muted: #9db3a9; --line: #263a32;
   --brand: #3ccf93; --brand-strong: #63dcab; --brand-soft: #173a2c; --on-brand: #04200f;
   --info: #7fb0ff; --info-soft: #172a47;
@@ -42,7 +42,8 @@ svg.icon { width: 1.25em; height: 1.25em; flex: none; stroke: currentColor; fill
 /* ---------- Top navigation ---------- */
 nav { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 20px; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 nav .brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; color: var(--ink); text-decoration: none; margin-right: 12px; padding: 6px 4px; }
-nav .brand .logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--brand); color: var(--on-brand); }
+nav .brand .logo { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--logo-bg); }
+nav .brand .logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
 nav .links { display: flex; gap: 4px; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; }
 nav .links::-webkit-scrollbar { display: none; }
 nav .links a { white-space: nowrap; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px; padding: 10px 14px; border-radius: 999px; min-height: 44px; display: inline-flex; align-items: center; transition: background-color .15s ease, color .15s ease; }
